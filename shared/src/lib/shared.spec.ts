@@ -158,20 +158,74 @@ describe('calculateBalance', () => {
 });
 
 describe('formatCurrency', () => {
-  it('should format USD currency by default', () => {
-    expect(formatCurrency(1234.56)).toBe('$1,234.56');
+  describe('with default USD currency', () => {
+    it('should format positive amounts with dollar sign and commas', () => {
+      expect(formatCurrency(1234.56)).toBe('$1,234.56');
+      expect(formatCurrency(1000000.99)).toBe('$1,000,000.99');
+    });
+
+    it('should format zero amounts', () => {
+      expect(formatCurrency(0)).toBe('$0.00');
+      expect(formatCurrency(0.00)).toBe('$0.00');
+    });
+
+    it('should format negative amounts with minus sign', () => {
+      expect(formatCurrency(-1234.56)).toBe('-$1,234.56');
+      expect(formatCurrency(-0.01)).toBe('-$0.01');
+    });
+
+    it('should format small decimal amounts', () => {
+      expect(formatCurrency(0.01)).toBe('$0.01');
+      expect(formatCurrency(0.99)).toBe('$0.99');
+      expect(formatCurrency(1.1)).toBe('$1.10');
+    });
+
+    it('should handle amounts without decimals', () => {
+      expect(formatCurrency(100)).toBe('$100.00');
+      expect(formatCurrency(1000)).toBe('$1,000.00');
+    });
+
+    it('should format very large amounts', () => {
+      expect(formatCurrency(999999999.99)).toBe('$999,999,999.99');
+      expect(formatCurrency(1000000000)).toBe('$1,000,000,000.00');
+    });
   });
 
-  it('should format different currencies', () => {
-    expect(formatCurrency(1234.56, 'EUR')).toBe('€1,234.56');
+  describe('with different currencies', () => {
+    it('should format EUR currency', () => {
+      expect(formatCurrency(1234.56, 'EUR')).toBe('€1,234.56');
+      expect(formatCurrency(-100, 'EUR')).toBe('-€100.00');
+    });
+
+    it('should format GBP currency', () => {
+      expect(formatCurrency(1234.56, 'GBP')).toBe('£1,234.56');
+    });
+
+    it('should format JPY currency (no decimals)', () => {
+      expect(formatCurrency(1234.56, 'JPY')).toBe('¥1,235');
+      expect(formatCurrency(1000, 'JPY')).toBe('¥1,000');
+    });
+
+    it('should format CAD currency', () => {
+      expect(formatCurrency(1234.56, 'CAD')).toBe('CA$1,234.56');
+    });
   });
 
-  it('should handle zero amounts', () => {
-    expect(formatCurrency(0)).toBe('$0.00');
-  });
+  describe('edge cases and error handling', () => {
+    it('should handle very small amounts', () => {
+      expect(formatCurrency(0.001)).toBe('$0.00');
+      expect(formatCurrency(0.005)).toBe('$0.01'); // Should round up
+    });
 
-  it('should handle negative amounts', () => {
-    expect(formatCurrency(-1234.56)).toBe('-$1,234.56');
+    it('should handle invalid currency codes gracefully', () => {
+      // Should not throw error, fallback behavior
+      expect(() => formatCurrency(100, 'INVALID')).not.toThrow();
+    });
+
+    it('should handle floating point precision issues', () => {
+      expect(formatCurrency(0.1 + 0.2)).toBe('$0.30'); // 0.1 + 0.2 = 0.30000000000000004
+      expect(formatCurrency(1.005)).toBe('$1.01'); // Rounding behavior
+    });
   });
 });
 
