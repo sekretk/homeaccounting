@@ -10,21 +10,52 @@ updates:
     open-pull-requests-limit: 10
     reviewers:
       - "ksekret"
-    assignees:
-      - "ksekret"
     commit-message:
-      prefix: "chore(deps)"
+      prefix: "chore"
+      prefix-development: "chore"
       include: "scope"
-    
+    groups:
+      nx-dependencies:
+        patterns:
+          - "@nx/*"
+        update-types:
+          - "minor"
+          - "patch"
+      react-dependencies:
+        patterns:
+          - "react*"
+          - "@types/react*"
+        update-types:
+          - "minor"
+          - "patch"
+      nestjs-dependencies:
+        patterns:
+          - "@nestjs/*"
+        update-types:
+          - "minor"
+          - "patch"
+      testing-dependencies:
+        patterns:
+          - "jest*"
+          - "@testing-library/*"
+          - "playwright*"
+          - "@playwright/*"
+        update-types:
+          - "minor"
+          - "patch"
+      dev-dependencies:
+        dependency-type: "development"
+        update-types:
+          - "minor"
+          - "patch"
+
   # Enable version updates for GitHub Actions
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
-      interval: "monthly"
-    open-pull-requests-limit: 5
-    reviewers:
-      - "ksekret"
-    assignees:
-      - "ksekret"
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
     commit-message:
-      prefix: "chore(actions)"
+      prefix: "ci"
+      include: "scope"

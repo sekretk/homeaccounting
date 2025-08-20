@@ -53,6 +53,26 @@
     "vitest": "^3.0.0",
     "webpack-cli": "^5.1.4"
   },
+  "scripts": {
+    "start": "nx serve frontend",
+    "start:backend": "nx serve backend",
+    "start:all": "nx run-many -t serve -p frontend backend",
+    "build": "nx run-many -t build",
+    "test": "nx run-many -t test",
+    "test:watch": "nx run-many -t test --watch",
+    "test:e2e": "nx run-many -t e2e",
+    "lint": "nx run-many -t lint",
+    "lint:fix": "nx run-many -t lint --fix",
+    "format": "nx format:write",
+    "format:check": "nx format:check",
+    "affected:build": "nx affected -t build",
+    "affected:test": "nx affected -t test",
+    "affected:lint": "nx affected -t lint",
+    "affected:e2e": "nx affected -t e2e",
+    "graph": "nx graph",
+    "clean": "nx reset",
+    "prepare": "husky install"
+  },
   "dependencies": {
     "@nestjs/common": "^11.0.0",
     "@nestjs/core": "^11.0.0",

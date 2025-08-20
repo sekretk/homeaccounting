@@ -138,6 +138,66 @@ This project includes comprehensive GitHub Actions workflows:
 This workspace is set up with Nx Cloud for distributed caching and CI optimization.
 Visit https://cloud.nx.app/connect/yFWgYwkt2J to complete the setup.
 
+## CI/CD Pipeline
+
+### GitHub Actions Workflows
+
+This project includes comprehensive CI/CD pipelines:
+
+#### **Main CI Pipeline** (`.github/workflows/ci.yml`)
+- **Triggers**: Push to `main`/`develop` branches, Pull Requests
+- **Matrix Testing**: Node.js 18.x and 20.x
+- **Steps**:
+  - Lint affected projects
+  - Test affected projects with coverage
+  - Build affected projects  
+  - Run E2E tests
+  - Upload test results and coverage reports
+
+#### **Pull Request Checks** (`.github/workflows/pr.yml`)
+- **Triggers**: PR opened, synchronized, or reopened
+- **Features**:
+  - Fast feedback on code changes
+  - Only runs on affected projects (Nx affected)
+  - Automated PR comments with check status
+  - Code formatting validation
+
+#### **Dependency Management** 
+- **Dependabot** configured for weekly dependency updates
+- **Grouped updates** for related packages (Nx, React, NestJS, etc.)
+- **Automated security updates**
+
+### NPM Scripts
+
+The following scripts are available for local development and CI:
+
+```bash
+# Development
+npm start              # Start frontend only
+npm run start:backend  # Start backend only  
+npm run start:all      # Start both frontend and backend
+
+# Building
+npm run build          # Build all projects
+npm run affected:build # Build only affected projects
+
+# Testing
+npm test              # Test all projects
+npm run test:watch    # Test with watch mode
+npm run test:e2e      # Run E2E tests
+npm run affected:test # Test only affected projects
+
+# Code Quality
+npm run lint          # Lint all projects
+npm run lint:fix      # Lint and fix issues
+npm run format        # Format code with Prettier
+npm run format:check  # Check code formatting
+
+# Utilities
+npm run graph         # Visualize project dependencies
+npm run clean         # Reset Nx cache
+```
+
 ## Architecture
 
 - **Frontend (React)**: Modern React app with Vite bundler, React Router, and TypeScript
