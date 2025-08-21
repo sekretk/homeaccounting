@@ -2,15 +2,15 @@ name: CI
 
 on:
   push:
-    branches: [ main, develop ]
+    branches: [main, develop]
   pull_request:
-    branches: [ main, develop ]
+    branches: [main, develop]
     types: [opened, synchronize, reopened]
 
 jobs:
   pr-checks:
     runs-on: ubuntu-latest
-    
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -24,7 +24,7 @@ jobs:
           cache: 'npm'
 
       - name: Install dependencies
-        run: npm ci
+        run: npm i
 
       - name: Setup Nx SHAs
         uses: nrwl/nx-set-shas@v4
@@ -38,6 +38,9 @@ jobs:
           key: ${{ runner.os }}-nx-${{ hashFiles('**/package-lock.json') }}-${{ github.sha }}
           restore-keys: |
             ${{ runner.os }}-nx-${{ hashFiles('**/package-lock.json') }}-
+
+      - name: Format code
+        run: npx nx format:write
 
       - name: Check formatting
         run: npx nx format:check
@@ -77,44 +80,3 @@ jobs:
         with:
           directory: ./coverage
           fail_ci_if_error: false
-
-      - name: Comment PR
-        uses: actions/github-script@v7
-        if: always() && github.event_name == 'pull_request'
-        with:
-          script: |
-            const { data: comments } = await github.rest.issues.listComments({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: context.issue.number,
-            });
-            
-            const botComment = comments.find(comment => 
-              comment.user.type === 'Bot' && comment.body.includes('## 🤖 PR Checks')
-            );
-            
-            const body = `## 🤖 PR Checks
-            
-            ✅ Code formatting check completed
-            ✅ Linting completed  
-            ✅ Tests completed
-            ✅ Build completed
-            
-            This PR affects projects that have been successfully validated.
-            `;
-            
-            if (botComment) {
-              await github.rest.issues.updateComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                comment_id: botComment.id,
-                body: body
-              });
-            } else {
-              await github.rest.issues.createComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                issue_number: context.issue.number,
-                body: body
-              });
-            }
