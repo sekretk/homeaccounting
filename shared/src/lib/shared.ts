@@ -31,7 +31,7 @@ export function formatCurrency(amount: number, currency = 'USD'): string {
       style: 'currency',
       currency,
     }).format(amount);
-  } catch (error) {
+  } catch {
     // Fallback for invalid currency codes
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
@@ -99,7 +99,7 @@ export function getDateRange(period: 'week' | 'month' | 'quarter' | 'year', offs
   let end: Date;
   
   switch (period) {
-    case 'week':
+    case 'week':  {
       const currentDay = now.getDay();
       const startOfWeek = new Date(now);
       startOfWeek.setDate(now.getDate() - currentDay - (offset * 7));
@@ -112,25 +112,26 @@ export function getDateRange(period: 'week' | 'month' | 'quarter' | 'year', offs
       start = startOfWeek;
       end = endOfWeek;
       break;
-      
-    case 'month':
+    }
+    case 'month': { 
       start = new Date(currentYear, currentMonth - offset, 1);
       end = new Date(currentYear, currentMonth - offset + 1, 0);
       end.setHours(23, 59, 59, 999);
       break;
-      
-    case 'quarter':
+    }
+    case 'quarter': { 
       const quarterStart = Math.floor(currentMonth / 3) * 3 - (offset * 3);
       start = new Date(currentYear, quarterStart, 1);
       end = new Date(currentYear, quarterStart + 3, 0);
       end.setHours(23, 59, 59, 999);
       break;
-      
-    case 'year':
+    }
+    case 'year': {  
       start = new Date(currentYear - offset, 0, 1);
       end = new Date(currentYear - offset, 11, 31);
       end.setHours(23, 59, 59, 999);
       break;
+    }
   }
   
   return { start, end };
