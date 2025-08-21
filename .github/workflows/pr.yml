@@ -39,6 +39,9 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-nx-${{ hashFiles('**/package-lock.json') }}-
 
+      - name: Format code
+        run: npx nx format:write
+
       - name: Check formatting
         run: npx nx format:check
 
