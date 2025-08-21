@@ -23,6 +23,9 @@ jobs:
 
     - name: Run processing script
       run: npx nx format:write
+      
+    - name: Run lint fix
+      run: npx nx lint:fix
 
     - name: Check for modifications
       id: git-check
