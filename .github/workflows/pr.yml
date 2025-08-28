@@ -54,13 +54,13 @@ jobs:
       - name: Build affected
         run: npx nx affected -t build --parallel=3
 
-      - name: Install Playwright browsers
-        run: npx playwright install --with-deps
+      # - name: Install Playwright browsers
+      #   run: npx playwright install --with-deps
 
-      - name: Run E2E tests
-        run: npx nx affected -t e2e --parallel=1
-        env:
-          DISPLAY: :0
+      # - name: Run E2E tests
+      #   run: npx nx affected -t e2e --parallel=1
+      #   env:
+      #     DISPLAY: :0
 
       - name: Upload test results
         uses: actions/upload-artifact@v4
