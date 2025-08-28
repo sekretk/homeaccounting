@@ -209,7 +209,166 @@ npm run clean         # Reset Nx cache
   - Consistent code style and linting
   - Efficient build caching with Nx
 
+## Database Setup
+
+This project uses PostgreSQL as the database with TypeORM for object-relational mapping.
+
+### Prerequisites
+
+- Docker and Docker Compose (for local development)
+
+### Local Development Database
+
+The project includes Docker setup for local PostgreSQL development:
+
+```bash
+# Start PostgreSQL database
+npm run db:up
+
+# Stop PostgreSQL database
+npm run db:down
+
+# View database logs
+npm run db:logs
+```
+
+**Alternative setup options:**
+
+1. **Using Docker Compose** (if available):
+   ```bash
+   docker compose -f docker-compose.dev.yml up -d
+   ```
+
+2. **Using direct Docker commands**:
+   ```bash
+   docker run -d --name homeaccounting-postgres \
+     -p 5432:5432 \
+     -e POSTGRES_DB=homeaccounting \
+     -e POSTGRES_USER=postgres \
+     -e POSTGRES_PASSWORD=password \
+     postgres:15
+   ```
+
+3. **Using local PostgreSQL installation**:
+   - Install PostgreSQL locally
+   - Create database: `createdb homeaccounting`
+   - Update `.env` with your local credentials
+
+### Database Configuration
+
+The database connection is configured through environment variables:
+
+```bash
+# Copy the example environment file (create manually)
+# .env
+DB_HOST=localhost
+DB_PORT=5432
+DB_USERNAME=postgres
+DB_PASSWORD=password
+DB_NAME=homeaccounting
+NODE_ENV=development
+PORT=3333
+RUN_MIGRATIONS=true
+RUN_SEEDS=true
+```
+
+### Database Management
+
+- **PostgreSQL**: Runs on `localhost:5432`
+- Use your preferred PostgreSQL client (pgAdmin, TablePlus, DBeaver, etc.) to manage the database
+
+### Features
+
+- **TypeORM**: Entity management with automatic migrations in development
+- **Entity Example**: Account entity with support for different account types
+- **Database Extensions**: UUID support for primary keys
+- **Connection Pooling**: Optimized for production environments
+
+### Schema Management
+
+This project uses SQL-based migrations for database schema management with an integrated seeding system:
+
+**Migration System:**
+- **File Format**: Plain SQL files for maximum compatibility and portability
+- **Development**: Migrations run automatically on app startup
+- **Production**: Manual migration control via environment variables
+- **Location**: `database/migrations/` (root level)
+- **Seeds**: Each migration can have a corresponding seed file in `database/seeds/`
+
+**Migration Commands:**
+```bash
+# Create a new migration with template
+npm run migration:create my_migration_name
+
+# Check migration status (see backend logs)
+npm run migration:status
+
+# Force run seeds manually
+npm run db:seed
+```
+
+**File Structure:**
+```
+database/
+├── migrations/
+│   ├── 001_create_accounts_table.sql
+│   └── 002_create_users_table.sql
+└── seeds/
+    ├── 001_accounts_seed.sql
+    └── 002_users_seed.sql
+```
+
+**Creating Migrations:**
+
+1. **Create migration files:**
+   ```bash
+   npm run migration:create create_users_table
+   ```
+
+2. **Edit the migration file** (`database/migrations/002_create_users_table.sql`):
+   ```sql
+   -- Migration: create_users_table
+   -- Created: 2024-01-01
+   -- Description: Creates the users table
+   
+   CREATE TABLE users (
+       id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+       name VARCHAR(255) NOT NULL,
+       email VARCHAR(255) UNIQUE NOT NULL,
+       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+   );
+   
+   CREATE INDEX idx_users_email ON users(email);
+   ```
+
+3. **Edit the seed file** (`database/seeds/002_create_users_table_seed.sql`):
+   ```sql
+   -- Seed: create_users_table sample data
+   -- Migration: 002_create_users_table.sql
+   
+   INSERT INTO users (name, email) 
+   SELECT * FROM (VALUES
+       ('John Doe', 'john@example.com'),
+       ('Jane Smith', 'jane@example.com')
+   ) AS v(name, email)
+   WHERE NOT EXISTS (SELECT 1 FROM users);
+   ```
+
+**Migration Features:**
+- **Automatic Execution**: Pending migrations run on app startup in development
+- **Transaction Safety**: Each migration runs in a database transaction
+- **Tracking**: Migration execution is tracked in the `migrations` table
+- **Sequential**: Migrations are executed in numerical order
+- **Idempotent**: Safe to run multiple times
+
+**Environment Variables:**
+- `RUN_MIGRATIONS=true` - Force run migrations in production
+- `RUN_SEEDS=true` - Force run seeds
+- `RUN_SEEDS=false` - Skip seeds in development
+- `NODE_ENV=development` - Enable auto-migrations and default seeding
+
 ## Ports
 
 - Frontend (React): http://localhost:4200
 - Backend (NestJS): http://localhost:3000
+- PostgreSQL: localhost:5432

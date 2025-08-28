@@ -1,0 +1,331 @@
+---
+type: project
+description: General Coding Standards and Quality Guidelines
+globs:
+  - "**/*.ts"
+  - "**/*.tsx" 
+  - "**/*.js"
+  - "**/*.jsx"
+  - "**/*.sql"
+alwaysApply: true
+---
+
+# 📏 Coding Standards & Quality Guidelines
+
+## 🎯 TypeScript Standards
+
+### Type Definitions
+```typescript
+// ✅ Good: Explicit interfaces
+interface UserData {
+  id: string;
+  name: string;
+  email?: string;
+  createdAt: Date;
+}
+
+// ✅ Good: Union types for restricted values
+type Status = 'active' | 'inactive' | 'pending';
+
+// ❌ Avoid: Using 'any'
+const userData: any = getUser(); // Bad
+
+// ✅ Good: Proper typing
+const userData: UserData = getUser();
+```
+
+### Error Handling
+```typescript
+// ✅ Good: Proper error handling
+async function fetchData(id: string): Promise<UserData> {
+  try {
+    const response = await fetch(`/api/users/${id}`);
+    
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    }
+    
+    return await response.json();
+  } catch (error) {
+    console.error('Failed to fetch user data:', error);
+    throw error instanceof Error 
+      ? error 
+      : new Error('Unknown error occurred');
+  }
+}
+```
+
+### Naming Conventions
+```typescript
+// ✅ Variables and functions: camelCase
+const userName = 'john';
+const getUserById = (id: string) => { ... };
+
+// ✅ Classes and interfaces: PascalCase
+class UserService { ... }
+interface ApiResponse { ... }
+
+// ✅ Constants: SCREAMING_SNAKE_CASE
+const MAX_RETRY_ATTEMPTS = 3;
+const API_BASE_URL = 'https://api.example.com';
+
+// ✅ Files: kebab-case
+// user-service.ts
+// api-client.ts
+```
+
+## 🗄️ Database Standards
+
+### Migration Patterns
+```sql
+-- ✅ Good: Descriptive migration with proper structure
+-- Migration: create_user_accounts_table
+-- Created: 2025-08-22
+-- Description: Create user accounts with email authentication
+
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+
+CREATE TABLE user_accounts (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    email VARCHAR(255) UNIQUE NOT NULL,
+    password_hash VARCHAR(255) NOT NULL,
+    first_name VARCHAR(100) NOT NULL,
+    last_name VARCHAR(100) NOT NULL,
+    is_active BOOLEAN NOT NULL DEFAULT true,
+    email_verified_at TIMESTAMP,
+    last_login_at TIMESTAMP,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Create indexes for performance
+CREATE INDEX idx_user_accounts_email ON user_accounts(email);
+CREATE INDEX idx_user_accounts_active ON user_accounts(is_active);
+CREATE INDEX idx_user_accounts_created ON user_accounts(created_at);
+
+-- Add constraints
+ALTER TABLE user_accounts ADD CONSTRAINT check_email_format 
+    CHECK (email ~* '^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}$');
+```
+
+### Required Columns
+Every table must include:
+```sql
+-- Always include these columns
+id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+```
+
+## 🔧 Code Quality Rules
+
+### Function/Method Size
+- Keep functions under 20 lines when possible
+- Extract complex logic into separate functions
+- Use descriptive function names that explain purpose
+
+### Comments and Documentation
+```typescript
+// ✅ Good: JSDoc for public APIs
+/**
+ * Calculates the total amount including taxes
+ * @param baseAmount - The base amount before taxes
+ * @param taxRate - Tax rate as decimal (e.g., 0.15 for 15%)
+ * @returns Total amount including taxes
+ */
+function calculateTotal(baseAmount: number, taxRate: number): number {
+  return baseAmount * (1 + taxRate);
+}
+
+// ✅ Good: Explain complex business logic
+// Apply bulk discount if order contains more than 10 items
+// and customer has premium status
+if (orderItems.length > 10 && customer.isPremium) {
+  discount = BULK_PREMIUM_DISCOUNT;
+}
+```
+
+### Import Organization
+```typescript
+// ✅ Good: Organized imports
+// 1. Node modules
+import React, { useState, useEffect } from 'react';
+import { Router } from 'express';
+
+// 2. Internal modules (absolute paths)
+import { UserService } from '@/services/user.service';
+import { ApiClient } from '@/utils/api-client';
+
+// 3. Relative imports
+import { Button } from './components/Button';
+import { Modal } from '../Modal/Modal';
+
+// 4. Type-only imports (if using TypeScript 4.5+)
+import type { User } from '@shared/entities';
+```
+
+## 🧪 Testing Standards
+
+### Test Structure
+```typescript
+// ✅ Good: Descriptive test structure
+describe('UserService', () => {
+  describe('getUserById', () => {
+    it('should return user when valid ID is provided', async () => {
+      // Arrange
+      const userId = 'valid-uuid';
+      const expectedUser = { id: userId, name: 'John Doe' };
+      
+      // Act
+      const result = await userService.getUserById(userId);
+      
+      // Assert
+      expect(result).toEqual(expectedUser);
+    });
+
+    it('should throw NotFoundException when user not found', async () => {
+      // Arrange
+      const invalidId = 'non-existent-uuid';
+      
+      // Act & Assert
+      await expect(userService.getUserById(invalidId))
+        .rejects.toThrow(NotFoundException);
+    });
+  });
+});
+```
+
+### Test Naming
+- Use descriptive test names that explain the scenario
+- Follow "should [expected behavior] when [condition]" pattern
+- Group related tests with `describe` blocks
+
+## 📊 Performance Guidelines
+
+### Frontend Performance
+```typescript
+// ✅ Good: Memoize expensive calculations
+const expensiveValue = useMemo(() => {
+  return heavyCalculation(data);
+}, [data]);
+
+// ✅ Good: Optimize re-renders
+const MemoizedComponent = React.memo(({ data }) => {
+  return <ExpensiveComponent data={data} />;
+});
+
+// ✅ Good: Debounce user input
+const debouncedSearch = useMemo(
+  () => debounce((term: string) => setSearchTerm(term), 300),
+  []
+);
+```
+
+### Backend Performance
+```typescript
+// ✅ Good: Use database indexes for queries
+async findUsersByStatus(status: string) {
+  // Ensure index exists on 'status' column
+  return this.repository.find({
+    where: { status },
+    order: { createdAt: 'DESC' },
+  });
+}
+
+// ✅ Good: Limit query results
+async getRecentUsers(limit = 20) {
+  return this.repository.find({
+    order: { createdAt: 'DESC' },
+    take: limit,
+  });
+}
+```
+
+## 🔒 Security Best Practices
+
+### Input Validation
+```typescript
+// ✅ Good: Validate all inputs
+import { IsEmail, IsString, MinLength, IsUUID } from 'class-validator';
+
+export class CreateUserDto {
+  @IsEmail()
+  email: string;
+
+  @IsString()
+  @MinLength(8)
+  password: string;
+
+  @IsUUID()
+  roleId: string;
+}
+```
+
+### Database Security
+```sql
+-- ✅ Good: Use parameterized queries (TypeORM handles this)
+-- ❌ Never build SQL strings manually
+-- ✅ Always validate UUIDs
+-- ✅ Use appropriate constraints and validations
+```
+
+## 🔧 Environment & Configuration
+
+### Environment Variables
+```typescript
+// ✅ Good: Validate environment variables
+const config = {
+  port: parseInt(process.env.PORT || '3000', 10),
+  dbUrl: process.env.DATABASE_URL || 'postgresql://localhost:5432/app',
+  jwtSecret: process.env.JWT_SECRET,
+};
+
+// Validate required variables
+if (!config.jwtSecret) {
+  throw new Error('JWT_SECRET environment variable is required');
+}
+```
+
+## 📝 Git Commit Standards
+
+### Commit Message Format
+```
+type(scope): brief description
+
+Detailed explanation if needed
+
+Closes #123
+```
+
+### Commit Types
+- `feat`: New feature
+- `fix`: Bug fix
+- `docs`: Documentation changes
+- `style`: Code style changes (formatting)
+- `refactor`: Code refactoring
+- `test`: Adding or modifying tests
+- `chore`: Build process or auxiliary tool changes
+
+### Examples
+```
+feat(user): add email verification functionality
+
+- Add email verification service
+- Create verification email template
+- Update user registration flow
+
+Closes #45
+```
+
+## 🚀 Code Review Checklist
+
+- [ ] Code follows TypeScript/naming conventions
+- [ ] Error handling is implemented properly
+- [ ] Tests are included and meaningful
+- [ ] Performance considerations addressed
+- [ ] Security best practices followed
+- [ ] Documentation updated if needed
+- [ ] No hardcoded values (use environment variables)
+- [ ] Database migrations are reversible
+- [ ] UI is responsive and accessible
+- [ ] Code is readable and well-commented
