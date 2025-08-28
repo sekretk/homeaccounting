@@ -7,3 +7,8 @@
 # Exclude Helm charts and Kubernetes manifests
 /helm-charts
 /ansible
+
+# Exclude markdown and YAML files from formatting
+*.md
+*.yml
+*.yaml

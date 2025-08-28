@@ -3,7 +3,6 @@
     "version": "21.4.0"
   },
   "$schema": "./node_modules/nx/schemas/nx-schema.json",
-  "nxCloudId": "68a584870d57f61c2f751620",
   "plugins": [
     {
       "plugin": "@nx/react/router-plugin",
