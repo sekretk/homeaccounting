@@ -16,5 +16,6 @@ export type { User, Transaction, Account as AccountInterface } from './lib/share
 // Export migration core
 export * from './lib/migration-core';
 
-// Export TypeORM entities (Account entity will be the default Account export)
-export * from './entities';
+// Export TypeORM entities explicitly to avoid conflicts
+export { Account } from './entities/account.entity';
+export { Expense } from './entities/expense.entity';

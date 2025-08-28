@@ -57,7 +57,7 @@ export class Account {
   })
   updatedAt?: Date;
 
-  @OneToMany(() => Expense, (expense) => expense.account, { lazy: true })
+  @OneToMany(() => Expense, (expense: Expense) => expense.account, { lazy: true })
   expenses?: Promise<Expense[]>;
 
   constructor(init?: Partial<Account>) {
