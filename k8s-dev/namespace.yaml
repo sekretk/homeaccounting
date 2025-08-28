@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: homeaccounting-dev
+  labels:
+    app: homeaccounting
+    environment: development
