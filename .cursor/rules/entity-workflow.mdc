@@ -1,0 +1,138 @@
+---
+type: project
+description: Home Accounting Project - Main Entity Workflow
+globs: 
+  - "**/*"
+alwaysApply: true
+---
+
+# 🏗️ Entity Workflow - Project-Wide Rules
+
+## 5-Step Entity Creation Process
+
+When adding a new entity to the system, follow these steps in order:
+
+### 1. 📝 Create Migration
+Create migration file directly in `database/migrations/` folder:
+```bash
+# File: database/migrations/[number]_create_[entity_name]_table.sql
+# Follow the existing numbering pattern (001, 002, 003, etc.)
+# Add table structure with proper columns
+# Add indexes for performance  
+# Add foreign key constraints if needed
+# Follow PostgreSQL best practices
+```
+
+**Migration Template:**
+```sql
+-- Migration: create_[entity_name]_table
+-- Created: YYYY-MM-DD
+-- Description: [Add your migration description here]
+
+CREATE TABLE [entity_name] (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    name VARCHAR(255) NOT NULL,
+    description TEXT,
+    is_active BOOLEAN NOT NULL DEFAULT true,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Create indexes for performance
+CREATE INDEX IF NOT EXISTS idx_[entity_name]_name ON [entity_name](name);
+CREATE INDEX IF NOT EXISTS idx_[entity_name]_active ON [entity_name](is_active);
+```
+
+### 2. 🌱 Add Seeds
+Create seed file directly in `database/seeds/` folder:
+```bash
+# File: database/seeds/[number]_[entity_name]_seed.sql
+# Use the same number as the migration
+# Add sample data for development/testing
+# Use proper data types and relationships
+# Include realistic test scenarios
+```
+
+**Seed Template:**
+```sql
+-- Seed: [entity_name] sample data
+-- Migration: XXX_create_[entity_name]_table.sql
+-- Description: Sample data for development and testing
+
+INSERT INTO [entity_name] (name, description) 
+SELECT * FROM (VALUES
+    ('Sample 1', 'First sample item'),
+    ('Sample 2', 'Second sample item'),
+    ('Sample 3', 'Third sample item')
+) AS v(name, description)
+WHERE NOT EXISTS (SELECT 1 FROM [entity_name] WHERE [entity_name].name = v.name);
+```
+
+### 3. 🗄️ Run Database & Generate Entity
+```bash
+# Start database (if not running)
+npm run db:up
+
+# Start backend to run migrations
+npm run start:backend
+# Wait for migrations to complete, then stop (Ctrl+C)
+
+# Generate TypeORM entities from updated schema
+npm run entities:generate
+```
+
+### 4. 🎛️ Create Backend (see backend/.cursor/rules/)
+- Create Service with business logic
+- Create Controller with REST endpoints
+- Create Module and wire everything together
+- Add DTOs for validation
+
+### 5. 🖼️ Create Frontend (see frontend/.cursor/rules/)
+- Create Page component
+- Create CSS module for styling
+- Add routing and navigation
+- Implement CRUD operations
+
+## 🎯 Project Standards
+
+### Naming Conventions
+- **Database tables**: `snake_case` (transaction_categories)
+- **TypeORM entities**: `PascalCase` (TransactionCategory)
+- **Entity properties**: `camelCase` (categoryType)
+- **Files**: `kebab-case` (transaction-categories.service.ts)
+
+### Required Database Columns
+Every table must include:
+```sql
+id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+```
+
+### TypeScript Standards
+- Use strict TypeScript throughout
+- Import shared entities from `@shared/entities`
+- Proper error handling with try/catch
+- Use interfaces for complex objects
+- Add proper JSDoc comments
+
+## 🚀 Best Practices
+
+- Always use shared entities across frontend and backend
+- Keep business logic in service layers, not controllers
+- Use proper error handling and validation
+- Follow consistent naming conventions
+- Add comprehensive documentation
+- Use TypeScript strict mode
+- Implement proper logging and monitoring
+
+## 📋 Quick Checklist
+
+- [ ] Migration created and edited
+- [ ] Seed data added
+- [ ] Database running and migrations executed
+- [ ] Entities generated successfully
+- [ ] Backend service, controller, module created
+- [ ] Frontend page component created
+- [ ] Routing configured
+- [ ] End-to-end testing completed

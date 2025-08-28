@@ -1,0 +1,15 @@
+---
+# Ansible Vault file for sensitive variables
+# To encrypt this file, run: ansible-vault encrypt group_vars/vault.yml
+# To edit this file, run: ansible-vault edit group_vars/vault.yml
+
+# K3s cluster token - change this to a secure random string
+vault_k3s_token: "change-me-to-a-secure-random-token-k3s-cluster-2023"
+
+# SSH configuration (if needed)
+# vault_ssh_private_key_path: "~/.ssh/id_rsa"
+# vault_ssh_user: "root"
+
+# Additional secrets can be added here
+# vault_registry_username: "myuser"
+# vault_registry_password: "mypassword"

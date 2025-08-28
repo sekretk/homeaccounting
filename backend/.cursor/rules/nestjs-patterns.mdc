@@ -1,0 +1,291 @@
+---
+type: backend
+description: NestJS Backend Patterns and Templates
+globs:
+  - "src/**/*.ts"
+  - "src/**/*.js"
+alwaysApply: true
+---
+
+# 🎛️ Backend Development Rules - NestJS + TypeORM
+
+## File Structure for New Entity
+```
+backend/src/app/[entity-name]/
+├── [entity-name].controller.ts    # REST API endpoints
+├── [entity-name].service.ts       # Business logic
+├── [entity-name].module.ts        # NestJS module
+└── dto/
+    ├── create-[entity-name].dto.ts
+    └── update-[entity-name].dto.ts
+```
+
+## 1. Service Template (Business Logic)
+```typescript
+// [entity-name].service.ts
+import { Injectable, NotFoundException } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { [EntityName] } from '@shared/entities';
+import { Create[EntityName]Dto } from './dto/create-[entity-name].dto';
+import { Update[EntityName]Dto } from './dto/update-[entity-name].dto';
+
+@Injectable()
+export class [EntityName]Service {
+  constructor(
+    @InjectRepository([EntityName])
+    private readonly repository: Repository<[EntityName]>,
+  ) {}
+
+  async findAll(): Promise<[EntityName][]> {
+    return this.repository.find({
+      order: { createdAt: 'DESC' },
+    });
+  }
+
+  async findOne(id: string): Promise<[EntityName]> {
+    const entity = await this.repository.findOne({ 
+      where: { id },
+      // relations: ['relatedEntity'], // Add relations if needed
+    });
+    
+    if (!entity) {
+      throw new NotFoundException(`[EntityName] with ID ${id} not found`);
+    }
+    
+    return entity;
+  }
+
+  async create(createDto: Create[EntityName]Dto): Promise<[EntityName]> {
+    const entity = this.repository.create(createDto);
+    return this.repository.save(entity);
+  }
+
+  async update(id: string, updateDto: Update[EntityName]Dto): Promise<[EntityName]> {
+    const entity = await this.findOne(id); // This will throw if not found
+    
+    // Merge the updates
+    const updatedEntity = this.repository.merge(entity, updateDto);
+    return this.repository.save(updatedEntity);
+  }
+
+  async remove(id: string): Promise<void> {
+    const entity = await this.findOne(id); // This will throw if not found
+    await this.repository.remove(entity);
+  }
+
+  // Add custom business methods here
+  async findByStatus(isActive: boolean): Promise<[EntityName][]> {
+    return this.repository.find({
+      where: { isActive },
+      order: { createdAt: 'DESC' },
+    });
+  }
+}
+```
+
+## 2. Controller Template (REST API)
+```typescript
+// [entity-name].controller.ts
+import { 
+  Controller, 
+  Get, 
+  Post, 
+  Put, 
+  Delete, 
+  Body, 
+  Param, 
+  Query,
+  ParseUUIDPipe,
+  HttpCode,
+  HttpStatus,
+} from '@nestjs/common';
+import { [EntityName] } from '@shared/entities';
+import { [EntityName]Service } from './[entity-name].service';
+import { Create[EntityName]Dto } from './dto/create-[entity-name].dto';
+import { Update[EntityName]Dto } from './dto/update-[entity-name].dto';
+
+@Controller('[entity-name]')
+export class [EntityName]Controller {
+  constructor(private readonly service: [EntityName]Service) {}
+
+  @Get()
+  async findAll(
+    @Query('active') active?: string,
+  ): Promise<[EntityName][]> {
+    if (active !== undefined) {
+      const isActive = active === 'true';
+      return this.service.findByStatus(isActive);
+    }
+    return this.service.findAll();
+  }
+
+  @Get(':id')
+  async findOne(
+    @Param('id', ParseUUIDPipe) id: string,
+  ): Promise<[EntityName]> {
+    return this.service.findOne(id);
+  }
+
+  @Post()
+  @HttpCode(HttpStatus.CREATED)
+  async create(
+    @Body() createDto: Create[EntityName]Dto,
+  ): Promise<[EntityName]> {
+    return this.service.create(createDto);
+  }
+
+  @Put(':id')
+  async update(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() updateDto: Update[EntityName]Dto,
+  ): Promise<[EntityName]> {
+    return this.service.update(id, updateDto);
+  }
+
+  @Delete(':id')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async remove(
+    @Param('id', ParseUUIDPipe) id: string,
+  ): Promise<void> {
+    return this.service.remove(id);
+  }
+}
+```
+
+## 3. Module Template
+```typescript
+// [entity-name].module.ts
+import { Module } from '@nestjs/common';
+import { TypeOrmModule } from '@nestjs/typeorm';
+import { [EntityName] } from '@shared/entities';
+import { [EntityName]Controller } from './[entity-name].controller';
+import { [EntityName]Service } from './[entity-name].service';
+
+@Module({
+  imports: [TypeOrmModule.forFeature([[EntityName]])],
+  controllers: [[EntityName]Controller],
+  providers: [[EntityName]Service],
+  exports: [[EntityName]Service], // Export if used by other modules
+})
+export class [EntityName]Module {}
+```
+
+## 4. DTO Templates
+
+### Create DTO
+```typescript
+// dto/create-[entity-name].dto.ts
+import { 
+  IsString, 
+  IsOptional, 
+  IsBoolean, 
+  IsUUID,
+  MaxLength,
+  MinLength,
+} from 'class-validator';
+
+export class Create[EntityName]Dto {
+  @IsString()
+  @MinLength(1)
+  @MaxLength(255)
+  name: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(1000)
+  description?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  isActive?: boolean;
+
+  // Add other properties as needed
+  // @IsUUID()
+  // @IsOptional()
+  // parentId?: string;
+}
+```
+
+### Update DTO
+```typescript
+// dto/update-[entity-name].dto.ts
+import { PartialType } from '@nestjs/mapped-types';
+import { Create[EntityName]Dto } from './create-[entity-name].dto';
+
+export class Update[EntityName]Dto extends PartialType(Create[EntityName]Dto) {}
+```
+
+## 5. Module Registration
+
+Don't forget to add the new module to `app.module.ts`:
+```typescript
+// app.module.ts
+import { [EntityName]Module } from './[entity-name]/[entity-name].module';
+
+@Module({
+  imports: [
+    // ... existing imports
+    [EntityName]Module,
+  ],
+  // ... rest of module
+})
+export class AppModule {}
+```
+
+## 🎯 Backend Standards
+
+### Error Handling
+- Use NestJS built-in exceptions: `NotFoundException`, `BadRequestException`
+- Always validate UUIDs with `ParseUUIDPipe`
+- Use DTOs for input validation
+- Add proper HTTP status codes
+
+### Database Practices
+- Use repository pattern with TypeORM
+- Always check if entity exists before operations
+- Use transactions for complex operations
+- Add proper indexes in migrations
+
+### Validation
+- Use class-validator decorators in DTOs
+- Validate all input parameters
+- Use ParseUUIDPipe for UUID parameters
+- Add custom validation pipes when needed
+
+### Testing Patterns
+```typescript
+// [entity-name].service.spec.ts
+describe('[EntityName]Service', () => {
+  let service: [EntityName]Service;
+  let repository: Repository<[EntityName]>;
+
+  beforeEach(async () => {
+    const module: TestingModule = await Test.createTestingModule({
+      providers: [
+        [EntityName]Service,
+        {
+          provide: getRepositoryToken([EntityName]),
+          useClass: Repository,
+        },
+      ],
+    }).compile();
+
+    service = module.get<[EntityName]Service>([EntityName]Service);
+    repository = module.get<Repository<[EntityName]>>(getRepositoryToken([EntityName]));
+  });
+
+  // Add your tests here
+});
+```
+
+## 🚀 Best Practices
+
+- Keep controllers thin, services thick
+- Use dependency injection properly
+- Add Swagger/OpenAPI documentation
+- Use proper HTTP status codes
+- Implement proper logging
+- Use guards for authentication/authorization
+- Add interceptors for cross-cutting concerns
+- Use pipes for validation and transformation

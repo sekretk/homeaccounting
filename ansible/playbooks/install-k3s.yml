@@ -1,0 +1,141 @@
+---
+- name: Install K3s on VDS
+  hosts: k3s_cluster
+  become: yes
+  gather_facts: yes
+  vars:
+    k3s_server_manifests_templates:
+      - "calico.yml"
+    
+  pre_tasks:
+    - name: Update system packages
+      package:
+        name: "*"
+        state: latest
+      when: ansible_os_family == "RedHat"
+
+    - name: Update apt cache
+      apt:
+        update_cache: yes
+        upgrade: safe
+      when: ansible_os_family == "Debian"
+
+    - name: Install required packages
+      package:
+        name:
+          - curl
+          - wget
+          - unzip
+          - tar
+        state: present
+
+    - name: Disable firewalld (if present)
+      systemd:
+        name: firewalld
+        enabled: no
+        state: stopped
+      ignore_errors: yes
+
+  tasks:
+    - name: Check if K3s is already installed
+      stat:
+        path: /usr/local/bin/k3s
+      register: k3s_installed
+
+    - name: Download K3s installation script
+      get_url:
+        url: https://get.k3s.io
+        dest: /tmp/k3s_install.sh
+        mode: '0755'
+      when: not k3s_installed.stat.exists
+
+    - name: Install K3s server
+      shell: |
+        INSTALL_K3S_VERSION={{ k3s_version }} \
+        K3S_TOKEN={{ k3s_token }} \
+        INSTALL_K3S_EXEC="server \
+        {% if k3s_disable_components is defined %}
+        {% for component in k3s_disable_components %}
+        --disable={{ component }} \
+        {% endfor %}
+        {% endif %}
+        --write-kubeconfig-mode=644 \
+        --cluster-init" \
+        sh /tmp/k3s_install.sh
+      when: 
+        - not k3s_installed.stat.exists
+        - inventory_hostname in groups['k3s_servers']
+      environment: "{{ k3s_service_env | default({}) }}"
+
+    - name: Install K3s agent (worker nodes)
+      shell: |
+        INSTALL_K3S_VERSION={{ k3s_version }} \
+        K3S_TOKEN={{ k3s_token }} \
+        K3S_URL=https://{{ hostvars[groups['k3s_servers'][0]]['ansible_host'] }}:6443 \
+        INSTALL_K3S_EXEC="agent" \
+        sh /tmp/k3s_install.sh
+      when: 
+        - not k3s_installed.stat.exists
+        - inventory_hostname in groups['k3s_agents']
+        - groups['k3s_agents'] is defined
+      environment: "{{ k3s_service_env | default({}) }}"
+
+    - name: Wait for K3s to be ready
+      wait_for:
+        port: 6443
+        host: "{{ ansible_host }}"
+        delay: 15
+        timeout: 300
+      when: inventory_hostname in groups['k3s_servers']
+
+    - name: Create .kube directory for root user
+      file:
+        path: /root/.kube
+        state: directory
+        mode: '0755'
+      when: inventory_hostname in groups['k3s_servers']
+
+    - name: Copy K3s kubeconfig to .kube/config
+      copy:
+        src: /etc/rancher/k3s/k3s.yaml
+        dest: /root/.kube/config
+        remote_src: yes
+        mode: '0644'
+      when: inventory_hostname in groups['k3s_servers']
+
+    - name: Get K3s kubeconfig content
+      slurp:
+        src: /etc/rancher/k3s/k3s.yaml
+      register: k3s_kubeconfig_b64
+      when: inventory_hostname in groups['k3s_servers']
+
+    - name: Decode and save kubeconfig locally
+      local_action:
+        module: copy
+        content: "{{ k3s_kubeconfig_b64.content | b64decode | regex_replace('127.0.0.1', ansible_host) }}"
+        dest: "./kubeconfig-{{ inventory_hostname }}.yaml"
+        mode: '0600'
+      when: inventory_hostname in groups['k3s_servers']
+
+  post_tasks:
+    - name: Remove installation script
+      file:
+        path: /tmp/k3s_install.sh
+        state: absent
+
+    - name: Display cluster information
+      debug:
+        msg: |
+          K3s installation completed successfully!
+          
+          Server: {{ ansible_host }}
+          Version: {{ k3s_version }}
+          
+          To use kubectl locally:
+          export KUBECONFIG=./kubeconfig-{{ inventory_hostname }}.yaml
+          kubectl get nodes
+          
+          To access the cluster from your local machine:
+          scp root@{{ ansible_host }}:/etc/rancher/k3s/k3s.yaml ~/.kube/config-k3s
+          sed -i 's/127.0.0.1/{{ ansible_host }}/g' ~/.kube/config-k3s
+      when: inventory_hostname in groups['k3s_servers']
