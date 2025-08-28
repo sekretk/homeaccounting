@@ -6,6 +6,7 @@ import { AppService } from './app.service';
 import { databaseConfig } from '../database/database.config';
 import { SqlMigrationService } from '../database/sql-migration.service';
 import { ExpenseModule } from './expense/expense.module';
+import { HealthModule } from './health/health.module';
 
 @Module({
   imports: [
@@ -15,6 +16,7 @@ import { ExpenseModule } from './expense/expense.module';
     }),
     TypeOrmModule.forRoot(databaseConfig),
     ExpenseModule,
+    HealthModule,
   ],
   controllers: [AppController],
   providers: [AppService, SqlMigrationService],

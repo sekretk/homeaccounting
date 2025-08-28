@@ -215,12 +215,16 @@ This project uses PostgreSQL as the database with TypeORM for object-relational 
 
 ### Prerequisites
 
-- Docker and Docker Compose (for local development)
+- **Docker**: Choose one of:
+  - **Docker Desktop** (Windows/macOS/Linux)
+  - **Colima** (macOS alternative): `brew install colima docker`
+  - **Podman** or other Docker-compatible runtime
 
 ### Local Development Database
 
 The project includes Docker setup for local PostgreSQL development:
 
+**Option 1: Using npm scripts (recommended)**
 ```bash
 # Start PostgreSQL database
 npm run db:up
@@ -232,22 +236,27 @@ npm run db:down
 npm run db:logs
 ```
 
-**Alternative setup options:**
+**Option 2: Using Docker Compose** (full development environment):
+```bash
+# Make sure Docker/Colima is running
+colima start  # For macOS Colima users
 
-1. **Using Docker Compose** (if available):
-   ```bash
-   docker compose -f docker-compose.dev.yml up -d
-   ```
+# Start all services including database
+docker compose up -d postgres
 
-2. **Using direct Docker commands**:
-   ```bash
-   docker run -d --name homeaccounting-postgres \
-     -p 5432:5432 \
-     -e POSTGRES_DB=homeaccounting \
-     -e POSTGRES_USER=postgres \
-     -e POSTGRES_PASSWORD=password \
-     postgres:15
-   ```
+# Or start everything
+docker compose up --build
+```
+
+**Option 3: Direct Docker commands**:
+```bash
+docker run -d --name homeaccounting-postgres \
+  -p 5432:5432 \
+  -e POSTGRES_DB=homeaccounting \
+  -e POSTGRES_USER=postgres \
+  -e POSTGRES_PASSWORD=password \
+  postgres:15
+```
 
 3. **Using local PostgreSQL installation**:
    - Install PostgreSQL locally
@@ -366,6 +375,227 @@ database/
 - `RUN_SEEDS=true` - Force run seeds
 - `RUN_SEEDS=false` - Skip seeds in development
 - `NODE_ENV=development` - Enable auto-migrations and default seeding
+
+## Kubernetes Development Setup
+
+This project uses **Kubernetes for both development and production**, providing a consistent container orchestration experience. We use **Colima** in Kubernetes mode for local development.
+
+### Prerequisites
+
+- **Colima**: `brew install colima`
+- **kubectl**: `brew install kubectl`
+- **Docker**: Installed with Colima
+
+### Quick Start
+
+**Start the full development environment:**
+
+```bash
+# For Colima users (macOS)
+colima start
+
+# For Docker Desktop users - start Docker Desktop app
+
+# Verify Docker is running
+docker info
+```
+
+**Then start the services:**
+
+```bash
+# Check if Docker is running (helpful script)
+npm run docker:check
+
+# Start Docker/Colima automatically
+npm run docker:start
+
+# Start all services in development mode (modern Docker Compose)
+docker compose up --build
+
+# Alternative: use our wrapper script that checks Docker first
+npm run docker:compose -- up --build
+
+# Start specific service
+docker compose up postgres backend
+
+# View logs
+docker compose logs -f backend
+```
+
+**Production**: Production deployment is handled via Kubernetes. See the `helm-charts/` directory for Kubernetes configurations.
+
+### Docker Services
+
+#### 🐘 PostgreSQL Database
+- **Port**: 5432
+- **Database**: homeaccounting
+- **User**: postgres
+- **Password**: password (development)
+
+#### 🚀 Backend (NestJS)
+- **Port**: 3000
+- **Framework**: NestJS with TypeORM
+- **Database**: PostgreSQL
+- **Health Check**: Built-in health check at `/health`
+
+#### 🌐 Frontend (React)
+- **Port**: 4200 (mapped to container port 80)
+- **Framework**: React with Vite
+- **Server**: Nginx
+- **Proxy**: API requests proxied to backend
+
+### Docker Files Structure
+
+```
+├── docker-compose.yml              # Complete development configuration
+├── backend/
+│   ├── Dockerfile                  # Backend container
+│   └── .dockerignore              # Backend build exclusions
+└── frontend/
+    ├── Dockerfile                  # Frontend container  
+    ├── .dockerignore              # Frontend build exclusions
+    └── nginx.conf                 # Nginx configuration
+```
+
+### Docker Environment Variables
+
+#### Backend
+- `NODE_ENV`: development
+- `DEBUG`: Debug logging pattern
+- `DATABASE_HOST`: Database hostname (postgres)
+- `DATABASE_PORT`: Database port (5432)
+- `DATABASE_NAME`: Database name (homeaccounting)
+- `DATABASE_USER`: Database username (postgres)
+- `DATABASE_PASSWORD`: Database password (password)
+
+### Docker Volumes
+
+#### Persistent Volumes
+- `postgres_data`: PostgreSQL data persistence
+
+#### Development Volume Mounts (for hot reloading)
+- `./backend/src` → `/app/backend/src` (Backend source code)
+- `./frontend/src` → `/app/frontend/src` (Frontend source code)  
+- `./shared/src` → `/app/shared/src` (Shared code)
+- Package files mounted for dependency updates
+
+### Docker Networks
+
+- `homeaccounting-network`: Bridge network for service communication
+
+### Docker Health Checks
+
+All services include health checks:
+- **PostgreSQL**: `pg_isready` command
+- **Backend**: NestJS health endpoint at `/health`
+- **Frontend**: Nginx health endpoint
+
+### Docker Development Workflow
+
+1. **Start development environment:**
+   ```bash
+   docker compose up --build
+   ```
+
+2. **View logs:**
+   ```bash
+   docker compose logs -f
+   ```
+
+3. **Execute commands in containers:**
+   ```bash
+   # Backend container
+   docker compose exec backend npm run migration:run
+   
+   # Database container
+   docker compose exec postgres psql -U postgres homeaccounting
+   ```
+
+4. **Rebuild specific service:**
+   ```bash
+   docker compose build backend
+   docker compose up -d backend
+   ```
+
+### Docker Troubleshooting
+
+#### Colima Not Running (macOS)
+If you see "Cannot connect to the Docker daemon" error:
+```bash
+# Check if Colima is running
+colima status
+
+# Start Colima if not running
+colima start
+
+# If you have issues, restart Colima
+colima stop && colima start
+
+# For persistent issues, delete and recreate Colima
+colima delete
+colima start --cpu 4 --memory 8
+
+# Verify Docker is working
+docker info
+```
+
+#### Port Conflicts
+If you get port conflicts, stop conflicting services:
+```bash
+# Stop existing PostgreSQL
+docker stop homeaccounting-postgres || true
+
+# Or use different ports in docker-compose.yml
+```
+
+#### Build Issues
+```bash
+# Clean build (no cache)
+docker compose build --no-cache
+
+# Remove all containers and volumes
+docker compose down -v
+docker system prune -a
+```
+
+#### Database Issues
+```bash
+# Reset database
+docker compose down -v
+docker volume rm homeaccounting_postgres_data
+docker compose up postgres
+```
+
+#### Logs
+```bash
+# View all logs
+docker compose logs
+
+# Follow specific service logs
+docker compose logs -f backend
+
+# View recent logs
+docker compose logs --tail=50 frontend
+```
+
+### Docker Security Notes
+
+- Containers use non-root users for security
+- Security headers are configured in Nginx
+- Health checks prevent routing to unhealthy containers
+- For production security, see Kubernetes configurations in `helm-charts/`
+
+### Docker Performance
+
+#### Container Optimizations
+- Multi-stage Docker builds reduce image size
+- Nginx serves static files efficiently
+- Health checks ensure service availability
+
+#### Development Features
+- Volume mounts for hot reloading
+- Development-specific environment variables
+- Easier debugging and testing
 
 ## Ports
 

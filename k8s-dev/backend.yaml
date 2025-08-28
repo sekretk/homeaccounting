@@ -1,0 +1,84 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend
+  namespace: homeaccounting-dev
+  labels:
+    app: backend
+    environment: development
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: backend
+  template:
+    metadata:
+      labels:
+        app: backend
+    spec:
+      containers:
+      - name: backend
+        # Build image locally: docker build -f backend/Dockerfile -t homeaccounting-backend:dev .
+        image: homeaccounting-backend:dev
+        imagePullPolicy: Never # Use local image
+        env:
+        - name: NODE_ENV
+          value: development
+        - name: DEBUG
+          value: "homeaccounting:*"
+        - name: DATABASE_HOST
+          value: postgres
+        - name: DATABASE_PORT
+          value: "5432"
+        - name: DATABASE_NAME
+          value: homeaccounting
+        - name: DATABASE_USER
+          value: postgres
+        - name: DATABASE_PASSWORD
+          value: password
+        ports:
+        - containerPort: 3000
+        volumeMounts:
+        - name: backend-src
+          mountPath: /app/backend/src
+        - name: shared-src
+          mountPath: /app/shared/src
+        livenessProbe:
+          httpGet:
+            path: /health/live
+            port: 3000
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /health/ready
+            port: 3000
+          initialDelaySeconds: 5
+          periodSeconds: 5
+      volumes:
+      - name: backend-src
+        hostPath:
+          path: /Users/ksekret/projects/homeaccounting/backend/src
+          type: Directory
+      - name: shared-src
+        hostPath:
+          path: /Users/ksekret/projects/homeaccounting/shared/src
+          type: Directory
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: backend
+  namespace: homeaccounting-dev
+  labels:
+    app: backend
+spec:
+  selector:
+    app: backend
+  ports:
+  - port: 3000
+    targetPort: 3000
+    nodePort: 30300
+  type: NodePort
