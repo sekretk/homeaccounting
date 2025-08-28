@@ -126,7 +126,7 @@
     "react": "19.1.1",
     "react-dom": "19.1.1",
     "react-router-dom": "6.29.0",
-    "reflect-metadata": "^0.1.13",
+    "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.0",
     "typeorm": "^0.3.17"
   }
