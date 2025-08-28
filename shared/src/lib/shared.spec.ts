@@ -415,8 +415,8 @@ describe('formatDate', () => {
     });
 
     it('should throw error for non-date objects', () => {
-      expect(() => formatDate('2024-03-15' as any)).toThrow('Invalid date provided');
-      expect(() => formatDate(null as any)).toThrow('Invalid date provided');
+      expect(() => formatDate('2024-03-15' as unknown as Date)).toThrow('Invalid date provided');
+      expect(() => formatDate(null as unknown as Date)).toThrow('Invalid date provided');
     });
   });
 });
