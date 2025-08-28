@@ -60,8 +60,7 @@ export const ExpensePage: React.FC<ExpensePageProps> = () => {
   };
 
   const handleDelete = async (id: string) => {
-    // eslint-disable-next-line no-restricted-globals
-    if (!confirm('Are you sure you want to delete this expense? This action cannot be undone.')) {
+    if (!window.confirm('Are you sure you want to delete this expense? This action cannot be undone.')) {
       return;
     }
 
