@@ -72,7 +72,7 @@ export class Expense {
   })
   updatedAt?: Date;
 
-  @ManyToOne(() => Account, (account) => account.expenses, {
+  @ManyToOne(() => Account, (account: Account) => account.expenses, {
     onDelete: "SET NULL",
     lazy: true,
   })
