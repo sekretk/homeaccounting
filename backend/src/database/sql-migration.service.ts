@@ -2,7 +2,7 @@ import { Injectable, Logger, OnApplicationBootstrap } from '@nestjs/common';
 import { DataSource } from 'typeorm';
 import { InjectDataSource } from '@nestjs/typeorm';
 import { join } from 'path';
-import { MigrationCore, MigrationStatus } from '@shared';
+import { MigrationCore, MigrationStatus } from 'shared';
 
 
 
