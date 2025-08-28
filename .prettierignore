@@ -3,3 +3,7 @@
 /coverage
 /.nx/cache
 /.nx/workspace-data
+
+# Exclude Helm charts and Kubernetes manifests
+/helm-charts
+/ansible
