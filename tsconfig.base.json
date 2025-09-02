@@ -15,8 +15,8 @@
     "skipDefaultLibCheck": true,
     "baseUrl": ".",
     "paths": {
-      "shared": ["shared/src/index.ts"],
-      "@shared/entities": ["shared/src/entities/index.ts"]
+      "@shared/entities": ["shared/src/entities/index.ts"],
+      "shared": ["shared/src/index.ts"]
     }
   },
   "exclude": ["node_modules", "tmp"]
