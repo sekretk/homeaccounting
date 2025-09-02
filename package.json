@@ -110,7 +110,7 @@
     "db:seed": "RUN_SEEDS=true node -e \"console.log('Set RUN_SEEDS=true and start the backend to run seeds')\"",
     "entities:generate": "./scripts/generate-entities.sh -db homeaccounting -h localhost -p 5432 -u postgres -w password",
     "entities:generate:custom": "./scripts/generate-entities.sh",
-    "migrate": "ts-node --project tsconfig.base.json --esm scripts/migrate.ts",
+    "migrate": "ts-node --project tsconfig.base.json scripts/migrate.ts",
     "migrate:status": "npm run migrate status",
     "migrate:run": "npm run migrate run",
     "migrate:seeds": "npm run migrate seeds",

@@ -29,13 +29,15 @@ export default defineConfig({
     navigationTimeout: process.env.CI ? 60000 : 30000,
   },
   /* Run your local dev server before starting the tests */
-  webServer: process.env['BASE_URL'] ? undefined : {
-    command: 'npx nx run frontend:serve',
-    url: 'http://localhost:4200',
-    reuseExistingServer: true,
-    cwd: workspaceRoot,
-    timeout: 120 * 1000,
-  },
+  webServer: process.env['BASE_URL']
+    ? undefined
+    : {
+        command: 'npx nx run frontend:serve',
+        url: 'http://localhost:4200',
+        reuseExistingServer: true,
+        cwd: workspaceRoot,
+        timeout: 120 * 1000,
+      },
   projects: [
     {
       name: 'chromium',
