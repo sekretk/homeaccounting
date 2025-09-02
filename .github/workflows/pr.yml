@@ -90,10 +90,6 @@ jobs:
           echo "NODE_ENV=test" >> $GITHUB_ENV
           echo "✅ Environment variables configured for both migration and backend services"
 
-      # Install Playwright browsers
-      - name: Install Playwright browsers
-        run: npx playwright install --with-deps chromium
-
       # Build shared package (required for migrations)
       - name: Build shared package for migrations
         run: npx nx build shared
@@ -110,14 +106,27 @@ jobs:
           DB_USERNAME: runner
           DB_PASSWORD: ""
 
+      # Test database connection before migrations
+      - name: Test database connection
+        run: |
+          echo "🔍 Testing database connection..."
+          PGPASSWORD="" psql -h localhost -U runner -d homeaccounting_test -c "SELECT version();" || exit 1
+          echo "✅ Database connection successful"
+
       # Run database migrations using proper migration script
       - name: Run database migrations
         run: |
           echo "🔄 Running database migrations..."
+          echo "🔧 Environment check:"
+          echo "  DB_HOST: $DB_HOST"
+          echo "  DB_NAME: $DB_NAME" 
+          echo "  DB_USERNAME: $DB_USERNAME"
+          echo "📊 Checking shared package build..."
+          ls -la dist/shared/src/lib/ || echo "No shared lib found"
           echo "📊 Initial migration status:"
-          npm run migrate:status || exit 1
+          npx ts-node --project tsconfig.base.json --transpile-only scripts/migrate.ts status --verbose || exit 1
           echo "🚀 Running pending migrations:"
-          npm run migrate:run || exit 1
+          npx ts-node --project tsconfig.base.json --transpile-only scripts/migrate.ts run --verbose || exit 1
           echo "✅ Migrations completed successfully"
         env:
           DB_HOST: localhost
@@ -131,7 +140,7 @@ jobs:
       - name: Verify migration status
         run: |
           echo "📊 Checking final migration status..."
-          npm run migrate:status
+          npx ts-node --project tsconfig.base.json --transpile-only scripts/migrate.ts status
         env:
           DB_HOST: localhost
           DB_PORT: 5432
@@ -167,7 +176,7 @@ jobs:
       - name: Seed test database
         run: |
           echo "🌱 Running database seeds..."
-          npm run migrate:seeds || exit 1
+          npx ts-node --project tsconfig.base.json --transpile-only scripts/migrate.ts seeds --verbose || exit 1
           echo "✅ Test data seeded successfully"
         env:
           DB_HOST: localhost
@@ -196,6 +205,10 @@ jobs:
           echo "🔍 Checking API endpoints..."
           curl -f http://localhost:4200/api/health || exit 1
           echo "✅ All services are ready for E2E tests"
+
+      # Install Playwright browsers
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
 
       # Run E2E tests
       - name: Run E2E tests
