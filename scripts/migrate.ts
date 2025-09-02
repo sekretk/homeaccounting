@@ -2,7 +2,7 @@
 
 import { DataSource } from 'typeorm';
 import { join } from 'path';
-import { MigrationCore } from '../dist/shared/src/lib/migration-core.js';
+import { MigrationCore } from '../dist/shared/src/lib/migration-core';
 import * as fs from 'fs';
 
 // CLI argument parsing
@@ -281,6 +281,6 @@ process.on('uncaughtException', (error) => {
 });
 
 // Only run main if this file is executed directly
-if (import.meta.url === `file://${process.argv[1]}`) {
+if (require.main === module) {
   main();
 }
