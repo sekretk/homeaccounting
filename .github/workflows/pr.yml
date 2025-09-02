@@ -1,5 +1,14 @@
 name: CI
 
+# Comprehensive CI pipeline with E2E testing
+# - Runs linting, unit tests, and builds
+# - Sets up PostgreSQL test database
+# - Uses proper migration system (scripts/migrate.ts) for database setup
+# - Runs database migrations and seeds using npm scripts
+# - Starts backend and frontend services
+# - Runs Playwright E2E tests against the running application
+# - Uploads test results and reports as artifacts
+
 on:
   push:
     branches: [main, develop]
@@ -54,17 +63,153 @@ jobs:
       - name: Build affected
         run: npx nx affected -t build --parallel=3
 
-      # - name: Install Playwright browsers
-      #   run: npx playwright install --with-deps
+      # Set up PostgreSQL for E2E tests
+      - name: Start PostgreSQL
+        run: |
+          sudo systemctl start postgresql.service
+          sudo -u postgres createuser -s runner
+          sudo -u postgres createdb homeaccounting_test
+          sudo -u postgres psql -d homeaccounting_test -c "
+            CREATE EXTENSION IF NOT EXISTS \"uuid-ossp\";
+          "
 
-      # - name: Run E2E tests
-      #   run: npx nx affected -t e2e --parallel=1
-      #   env:
-      #     DISPLAY: :0
+      # Set up test environment variables
+      - name: Set up test environment
+        run: |
+          # Set up environment variables for both migration and backend formats
+          echo "DB_HOST=localhost" >> $GITHUB_ENV
+          echo "DB_PORT=5432" >> $GITHUB_ENV
+          echo "DB_NAME=homeaccounting_test" >> $GITHUB_ENV
+          echo "DB_USERNAME=runner" >> $GITHUB_ENV
+          echo "DB_PASSWORD=" >> $GITHUB_ENV
+          echo "DATABASE_HOST=localhost" >> $GITHUB_ENV
+          echo "DATABASE_PORT=5432" >> $GITHUB_ENV
+          echo "DATABASE_NAME=homeaccounting_test" >> $GITHUB_ENV
+          echo "DATABASE_USER=runner" >> $GITHUB_ENV
+          echo "DATABASE_PASSWORD=" >> $GITHUB_ENV
+          echo "NODE_ENV=test" >> $GITHUB_ENV
+          echo "✅ Environment variables configured for both migration and backend services"
+
+      # Install Playwright browsers
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+
+      # Build shared package (required for migrations)
+      - name: Build shared package for migrations
+        run: npx nx build shared
+
+      # Show migration system capabilities
+      - name: Migration system info
+        run: |
+          echo "📋 Available migration commands:"
+          npm run migrate help
+        env:
+          DB_HOST: localhost
+          DB_PORT: 5432
+          DB_NAME: homeaccounting_test
+          DB_USERNAME: runner
+          DB_PASSWORD: ""
+
+      # Run database migrations using proper migration script
+      - name: Run database migrations
+        run: |
+          echo "🔄 Running database migrations..."
+          echo "📊 Initial migration status:"
+          npm run migrate:status || exit 1
+          echo "🚀 Running pending migrations:"
+          npm run migrate:run || exit 1
+          echo "✅ Migrations completed successfully"
+        env:
+          DB_HOST: localhost
+          DB_PORT: 5432
+          DB_NAME: homeaccounting_test
+          DB_USERNAME: runner
+          DB_PASSWORD: ""
+          NODE_ENV: test
+
+      # Verify migration status after running
+      - name: Verify migration status
+        run: |
+          echo "📊 Checking final migration status..."
+          npm run migrate:status
+        env:
+          DB_HOST: localhost
+          DB_PORT: 5432
+          DB_NAME: homeaccounting_test
+          DB_USERNAME: runner
+          DB_PASSWORD: ""
+          NODE_ENV: test
+
+      # Start backend for E2E tests
+      - name: Start backend service
+        run: |
+          npx nx run backend:serve &
+          sleep 10
+          # Wait for backend to be ready with proper health check
+          timeout 60 bash -c 'until curl -s http://localhost:3000/api/health > /dev/null; do echo "Waiting for backend..."; sleep 3; done'
+          echo "✓ Backend is ready"
+        env:
+          # Migration script format (DB_*)
+          DB_HOST: localhost
+          DB_PORT: 5432
+          DB_NAME: homeaccounting_test
+          DB_USERNAME: runner
+          DB_PASSWORD: ""
+          # Backend service format (DATABASE_*)
+          DATABASE_HOST: localhost
+          DATABASE_PORT: 5432
+          DATABASE_NAME: homeaccounting_test
+          DATABASE_USER: runner
+          DATABASE_PASSWORD: ""
+          NODE_ENV: test
+
+      # Seed test database using proper migration script
+      - name: Seed test database
+        run: |
+          echo "🌱 Running database seeds..."
+          npm run migrate:seeds || exit 1
+          echo "✅ Test data seeded successfully"
+        env:
+          DB_HOST: localhost
+          DB_PORT: 5432
+          DB_NAME: homeaccounting_test
+          DB_USERNAME: runner
+          DB_PASSWORD: ""
+          NODE_ENV: test
+
+      # Start frontend for E2E tests  
+      - name: Start frontend service
+        run: |
+          npx nx run frontend:serve &
+          sleep 10
+          # Wait for frontend to be ready
+          timeout 60 bash -c 'until curl -s http://localhost:4200 > /dev/null; do echo "Waiting for frontend..."; sleep 3; done'
+          echo "✓ Frontend is ready"
+
+      # Verify services before E2E tests
+      - name: Verify services are ready
+        run: |
+          echo "🔍 Checking backend health..."
+          curl -f http://localhost:3000/api/health || exit 1
+          echo "🔍 Checking frontend availability..."
+          curl -f http://localhost:4200 || exit 1
+          echo "🔍 Checking API endpoints..."
+          curl -f http://localhost:4200/api/health || exit 1
+          echo "✅ All services are ready for E2E tests"
+
+      # Run E2E tests
+      - name: Run E2E tests
+        run: |
+          echo "🧪 Running E2E tests against CI environment..."
+          npx nx run frontend-e2e:e2e --verbose
+        env:
+          BASE_URL: http://localhost:4200
+          CI: true
+          DEBUG: pw:api
 
       - name: Upload test results
         uses: actions/upload-artifact@v4
-        if: failure()
+        if: always()
         with:
           name: test-results
           path: |
@@ -72,6 +217,18 @@ jobs:
             dist/
             playwright-report/
             test-results/
+            frontend-e2e/test-results/
+            frontend-e2e/playwright-report/
+          retention-days: 30
+
+      - name: Upload E2E test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: playwright-report
+          path: |
+            frontend-e2e/playwright-report/
+            frontend-e2e/test-results/
           retention-days: 30
 
       - name: Upload coverage reports
