@@ -5,11 +5,14 @@ test.describe('Home Accounting App', () => {
     // Navigate to the home page
     await page.goto('/');
     
-    // Wait for the page to load
-    await page.waitForLoadState('networkidle');
+    // Wait for the DOM to be loaded
+    await page.waitForLoadState('domcontentloaded');
     
-    // Check that the page loaded without errors
+    // Wait for specific content to appear (more reliable)
     await expect(page.locator('body')).toBeVisible();
+    
+    // If you have a specific app root element, wait for it:
+    // await expect(page.locator('#root')).toBeVisible();
     
     // Take a screenshot for visual verification
     await page.screenshot({ path: 'test-results/app-loaded.png', fullPage: true });
