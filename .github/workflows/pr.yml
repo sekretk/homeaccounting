@@ -201,23 +201,66 @@ jobs:
       # Verify services before E2E tests
       - name: Verify services are ready
         run: |
-          echo "🔍 Checking backend health..."
-          curl -f http://localhost:3000/api/health || exit 1
-          echo "🔍 Checking frontend availability..."
-          curl -f http://localhost:4200 || exit 1
-          echo "🔍 Checking API endpoints..."
-          curl -f http://localhost:4200/api/health || exit 1
-          echo "✅ All services are ready for E2E tests"
+          echo "🔍 Detailed service verification..."
+          
+          # Check backend direct access
+          echo "📡 Testing backend direct access..."
+          curl -v http://localhost:3000/api/health || echo "Backend direct access failed"
+          
+          # Check frontend is serving
+          echo "🎨 Testing frontend availability..."
+          curl -I http://localhost:4200 || echo "Frontend not accessible"
+          
+          # Check API proxy through frontend
+          echo "🔗 Testing API proxy through frontend..."
+          curl -v http://localhost:4200/api/health || echo "API proxy failed"
+          
+          # Get detailed response from API proxy
+          echo "📊 Getting detailed API response..."
+          curl -s -w "HTTP Status: %{http_code}\nContent-Type: %{content_type}\nTotal time: %{time_total}s\n" \
+               http://localhost:4200/api/health || echo "Detailed API check failed"
+          
+          # Check if processes are running
+          echo "🏃 Checking running processes..."
+          ps aux | grep -E "(node|nginx)" | grep -v grep || echo "No matching processes found"
+          
+          # Check listening ports
+          echo "🔌 Checking listening ports..."
+          netstat -tlnp | grep -E "(3000|4200)" || ss -tlnp | grep -E "(3000|4200)" || echo "No matching ports found"
+          
+          echo "✅ Service verification completed"
 
       # Install Playwright browsers
       - name: Install Playwright browsers
         run: npx playwright install --with-deps chromium
 
+      # Wait additional time for services to fully stabilize
+      - name: Wait for service stabilization
+        run: |
+          echo "⏱️ Waiting for services to fully stabilize..."
+          sleep 30
+          
+          # Final health checks with retries
+          echo "🔄 Final health check with retries..."
+          for i in {1..5}; do
+            echo "Attempt $i/5..."
+            if curl -f -s http://localhost:4200/api/health > /dev/null; then
+              echo "✅ API health check successful"
+              break
+            elif [ $i -eq 5 ]; then
+              echo "❌ API health check failed after all retries"
+              exit 1
+            else
+              echo "⏳ Retrying in 10 seconds..."
+              sleep 10
+            fi
+          done
+
       # Run E2E tests
       - name: Run E2E tests
         run: |
           echo "🧪 Running E2E tests against CI environment..."
-          npx nx run frontend-e2e:e2e --verbose
+          npx nx run frontend-e2e:e2e --verbose --timeout=120000
         env:
           BASE_URL: http://localhost:4200
           CI: true

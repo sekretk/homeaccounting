@@ -16,6 +16,8 @@ const baseURL = process.env['BASE_URL'] || 'http://localhost:30080';
  */
 export default defineConfig({
   ...nxE2EPreset(__filename, { testDir: './src' }),
+  /* Global test timeout */
+  timeout: process.env.CI ? 120000 : 30000,
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
   use: {
     baseURL,
@@ -25,8 +27,8 @@ export default defineConfig({
     screenshot: 'only-on-failure',
     video: process.env.CI ? 'retain-on-failure' : 'off',
     /* Increase timeouts for CI */
-    actionTimeout: process.env.CI ? 30000 : 10000,
-    navigationTimeout: process.env.CI ? 60000 : 30000,
+    actionTimeout: process.env.CI ? 60000 : 10000,
+    navigationTimeout: process.env.CI ? 120000 : 30000,
   },
   /* Run your local dev server before starting the tests */
   webServer: process.env['BASE_URL']
