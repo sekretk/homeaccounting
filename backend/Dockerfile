@@ -24,8 +24,9 @@ COPY backend/webpack.config.js ./backend/
 # Install all dependencies (including dev dependencies for build)
 RUN npm ci --include=dev --legacy-peer-deps
 
-# Copy backend source code
+# Copy backend source code and database migrations
 COPY backend/src/ ./backend/src/
+COPY database/ ./database/
 
 # Build the shared package first (disable daemon for Docker builds)
 RUN NX_DAEMON=false npx nx build shared
@@ -46,8 +47,9 @@ RUN addgroup -g 1001 -S nodejs && \
 # Set working directory
 WORKDIR /app
 
-# Copy built application from builder stage
+# Copy built application and database from builder stage
 COPY --from=builder --chown=nestjs:nodejs /app/dist/backend ./
+COPY --from=builder --chown=nestjs:nodejs /app/database ./database
 
 # Install only production dependencies
 RUN npm ci --only=production --legacy-peer-deps && npm cache clean --force
