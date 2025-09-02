@@ -8,8 +8,8 @@ export interface MigrationConfig {
   seedsPath: string;
   logger?: {
     log: (message: string) => void;
-    error: (message: string, error?: any) => void;
-    warn: (message: string, error?: any) => void;
+    error: (message: string, error?: Error | unknown) => void;
+    warn: (message: string, error?: Error | unknown) => void;
   };
 }
 
@@ -35,10 +35,64 @@ export class MigrationCore {
     if (!this.config.logger) {
       this.config.logger = {
         log: (message: string) => console.log(`[MIGRATION] ${message}`),
-        error: (message: string, error?: any) => console.error(`[MIGRATION ERROR] ${message}`, error),
-        warn: (message: string, error?: any) => console.warn(`[MIGRATION WARN] ${message}`, error),
+        error: (message: string, error?: Error | unknown) => console.error(`[MIGRATION ERROR] ${message}`, error),
+        warn: (message: string, error?: Error | unknown) => console.warn(`[MIGRATION WARN] ${message}`, error),
       };
     }
+  }
+
+  /**
+   * Smart SQL splitting that handles PostgreSQL functions and dollar-quoted strings
+   */
+  private smartSplitSQL(sql: string): string[] {
+    const statements: string[] = [];
+    let current = '';
+    let inDollarQuoted = false;
+    let dollarTag = '';
+    
+    const lines = sql.split('\n');
+    
+    for (const line of lines) {
+      const trimmedLine = line.trim();
+      
+      // Skip empty lines and comments when not inside dollar-quoted string
+      if (!inDollarQuoted && (!trimmedLine || trimmedLine.startsWith('--'))) {
+        continue;
+      }
+      
+      current += line + '\n';
+      
+      // Check for dollar-quoted string start/end
+      const dollarQuoteRegex = /\$([^$]*)\$/g;
+      let match;
+      
+      while ((match = dollarQuoteRegex.exec(line)) !== null) {
+        const tag = match[1] || '';
+        
+        if (!inDollarQuoted) {
+          // Start of dollar-quoted string
+          inDollarQuoted = true;
+          dollarTag = tag;
+        } else if (tag === dollarTag) {
+          // End of dollar-quoted string with matching tag
+          inDollarQuoted = false;
+          dollarTag = '';
+        }
+      }
+      
+      // If not in dollar-quoted string and line ends with semicolon, it's a complete statement
+      if (!inDollarQuoted && trimmedLine.endsWith(';')) {
+        statements.push(current.trim());
+        current = '';
+      }
+    }
+    
+    // Add any remaining content
+    if (current.trim()) {
+      statements.push(current.trim());
+    }
+    
+    return statements.filter(stmt => stmt.length > 0);
   }
 
   /**
@@ -72,7 +126,7 @@ export class MigrationCore {
       return files
         .filter(file => file.endsWith('.sql'))
         .sort();
-    } catch (error) {
+    } catch {
       this.config.logger?.warn('Migrations directory not found or empty');
       return [];
     }
@@ -107,11 +161,8 @@ export class MigrationCore {
       
       // Execute the migration in a transaction
       await this.config.dataSource.transaction(async (manager) => {
-        // Split SQL file by semicolons and execute each statement
-        const statements = sql
-          .split(';')
-          .map(stmt => stmt.trim())
-          .filter(stmt => stmt.length > 0 && !stmt.startsWith('--'));
+        // Smart SQL splitting that handles PostgreSQL functions
+        const statements = this.smartSplitSQL(sql);
 
         for (const statement of statements) {
           if (statement.trim()) {
@@ -176,11 +227,8 @@ export class MigrationCore {
       const filePath = join(this.config.seedsPath, fileName);
       const sql = await readFile(filePath, 'utf8');
       
-      // Split SQL file by semicolons and execute each statement
-      const statements = sql
-        .split(';')
-        .map(stmt => stmt.trim())
-        .filter(stmt => stmt.length > 0 && !stmt.startsWith('--'));
+      // Smart SQL splitting that handles PostgreSQL functions
+      const statements = this.smartSplitSQL(sql);
 
       for (const statement of statements) {
         if (statement.trim()) {
@@ -206,7 +254,7 @@ export class MigrationCore {
       let files: string[];
       try {
         files = await readdir(this.config.seedsPath);
-      } catch (error) {
+      } catch {
         this.config.logger?.log('Seeds directory not found or empty');
         return;
       }
@@ -257,10 +305,7 @@ export class MigrationCore {
 
       // Execute rollback in transaction
       await this.config.dataSource.transaction(async (manager) => {
-        const statements = downSql
-          .split(';')
-          .map(stmt => stmt.trim())
-          .filter(stmt => stmt.length > 0 && !stmt.startsWith('--'));
+        const statements = this.smartSplitSQL(downSql);
 
         for (const statement of statements) {
           if (statement.trim()) {

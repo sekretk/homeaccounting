@@ -27,11 +27,11 @@ RUN npm ci --include=dev --legacy-peer-deps
 # Copy backend source code
 COPY backend/src/ ./backend/src/
 
-# Build the shared package first
-RUN npx nx build shared
+# Build the shared package first (disable daemon for Docker builds)
+RUN NX_DAEMON=false npx nx build shared
 
 # Build the backend application
-RUN npx nx build backend
+RUN NX_DAEMON=false npx nx build backend
 
 # === Production Stage ===
 FROM node:20-alpine AS production

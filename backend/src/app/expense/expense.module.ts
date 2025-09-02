@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { Expense } from 'shared';
+import { Expense } from '@shared/entities';
 import { ExpenseController } from './expense.controller';
 import { ExpenseService } from './expense.service';
 
