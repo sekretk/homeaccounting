@@ -67,11 +67,14 @@ jobs:
       - name: Start PostgreSQL
         run: |
           sudo systemctl start postgresql.service
-          sudo -u postgres createuser -s runner
-          sudo -u postgres createdb homeaccounting_test
+          # Create user with password (ignore if exists)
+          sudo -u postgres psql -c "CREATE USER runner WITH SUPERUSER PASSWORD 'testpass123';" || echo "User runner already exists"
+          sudo -u postgres createdb homeaccounting_test || echo "Database already exists"
           sudo -u postgres psql -d homeaccounting_test -c "
             CREATE EXTENSION IF NOT EXISTS \"uuid-ossp\";
           "
+          # Grant all privileges to runner user
+          sudo -u postgres psql -c "GRANT ALL PRIVILEGES ON DATABASE homeaccounting_test TO runner;"
 
       # Set up test environment variables
       - name: Set up test environment
@@ -81,12 +84,12 @@ jobs:
           echo "DB_PORT=5432" >> $GITHUB_ENV
           echo "DB_NAME=homeaccounting_test" >> $GITHUB_ENV
           echo "DB_USERNAME=runner" >> $GITHUB_ENV
-          echo "DB_PASSWORD=" >> $GITHUB_ENV
+          echo "DB_PASSWORD=testpass123" >> $GITHUB_ENV
           echo "DATABASE_HOST=localhost" >> $GITHUB_ENV
           echo "DATABASE_PORT=5432" >> $GITHUB_ENV
           echo "DATABASE_NAME=homeaccounting_test" >> $GITHUB_ENV
           echo "DATABASE_USER=runner" >> $GITHUB_ENV
-          echo "DATABASE_PASSWORD=" >> $GITHUB_ENV
+          echo "DATABASE_PASSWORD=testpass123" >> $GITHUB_ENV
           echo "NODE_ENV=test" >> $GITHUB_ENV
           echo "✅ Environment variables configured for both migration and backend services"
 
@@ -104,13 +107,13 @@ jobs:
           DB_PORT: 5432
           DB_NAME: homeaccounting_test
           DB_USERNAME: runner
-          DB_PASSWORD: ""
+          DB_PASSWORD: "testpass123"
 
       # Test database connection before migrations
       - name: Test database connection
         run: |
           echo "🔍 Testing database connection..."
-          PGPASSWORD="" psql -h localhost -U runner -d homeaccounting_test -c "SELECT version();" || exit 1
+          PGPASSWORD="testpass123" psql -h localhost -U runner -d homeaccounting_test -c "SELECT version();" || exit 1
           echo "✅ Database connection successful"
 
       # Run database migrations using proper migration script
@@ -133,7 +136,7 @@ jobs:
           DB_PORT: 5432
           DB_NAME: homeaccounting_test
           DB_USERNAME: runner
-          DB_PASSWORD: ""
+          DB_PASSWORD: "testpass123"
           NODE_ENV: test
 
       # Verify migration status after running
@@ -146,7 +149,7 @@ jobs:
           DB_PORT: 5432
           DB_NAME: homeaccounting_test
           DB_USERNAME: runner
-          DB_PASSWORD: ""
+          DB_PASSWORD: "testpass123"
           NODE_ENV: test
 
       # Start backend for E2E tests
@@ -163,13 +166,13 @@ jobs:
           DB_PORT: 5432
           DB_NAME: homeaccounting_test
           DB_USERNAME: runner
-          DB_PASSWORD: ""
+          DB_PASSWORD: "testpass123"
           # Backend service format (DATABASE_*)
           DATABASE_HOST: localhost
           DATABASE_PORT: 5432
           DATABASE_NAME: homeaccounting_test
           DATABASE_USER: runner
-          DATABASE_PASSWORD: ""
+          DATABASE_PASSWORD: "testpass123"
           NODE_ENV: test
 
       # Seed test database using proper migration script
@@ -183,7 +186,7 @@ jobs:
           DB_PORT: 5432
           DB_NAME: homeaccounting_test
           DB_USERNAME: runner
-          DB_PASSWORD: ""
+          DB_PASSWORD: "testpass123"
           NODE_ENV: test
 
       # Start frontend for E2E tests  
