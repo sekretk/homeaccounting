@@ -2,8 +2,16 @@
 
 import { DataSource } from 'typeorm';
 import { join } from 'path';
-import { MigrationCore } from '../dist/shared/src/lib/migration-core.js';
 import * as fs from 'fs';
+
+// Check if shared package is built
+const sharedPath = join(process.cwd(), 'dist/shared/src/lib/migration-core.js');
+if (!fs.existsSync(sharedPath)) {
+  console.error('❌ Shared package not found. Please run: npx nx build shared');
+  process.exit(1);
+}
+
+import { MigrationCore } from '../dist/shared/src/lib/migration-core';
 
 // CLI argument parsing
 interface CLIArgs {
@@ -135,7 +143,10 @@ function createDatabaseConfig(args: CLIArgs) {
     password: args.password || process.env.DB_PASSWORD || 'password',
     database: args.database || process.env.DB_NAME || 'homeaccounting',
     logging: args.verbose || process.env.NODE_ENV === 'development',
-    ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
+    ssl:
+      process.env.NODE_ENV === 'production'
+        ? { rejectUnauthorized: false }
+        : false,
   };
 }
 
@@ -167,9 +178,10 @@ async function runCommand(args: CLIArgs): Promise<void> {
 
   const dbConfig = createDatabaseConfig(args);
   const logger = createLogger(args.verbose);
-  
+
   // Determine paths
-  const migrationsPath = args.migrationsPath || join(process.cwd(), 'database', 'migrations');
+  const migrationsPath =
+    args.migrationsPath || join(process.cwd(), 'database', 'migrations');
   const seedsPath = args.seedsPath || join(process.cwd(), 'database', 'seeds');
 
   // Verify paths exist
@@ -178,15 +190,36 @@ async function runCommand(args: CLIArgs): Promise<void> {
     process.exit(1);
   }
 
-  logger.log(`Connecting to database: ${dbConfig.host}:${dbConfig.port}/${dbConfig.database}`);
-  
+  logger.log(
+    `Connecting to database: ${dbConfig.host}:${dbConfig.port}/${dbConfig.database}`,
+  );
+
   // Create data source
   const dataSource = new DataSource(dbConfig);
-  
+
   try {
-    // Initialize connection
-    await dataSource.initialize();
-    logger.log('Database connection established');
+    // Initialize connection with retry logic
+    let retries = 5;
+    let connected = false;
+
+    while (retries > 0 && !connected) {
+      try {
+        await dataSource.initialize();
+        connected = true;
+        logger.log('Database connection established');
+      } catch (error) {
+        retries--;
+        if (retries > 0) {
+          logger.warn(
+            `Database connection failed, retrying... (${retries} attempts left)`,
+          );
+          await new Promise((resolve) => setTimeout(resolve, 2000));
+        } else {
+          logger.error('Failed to connect to database after all retries');
+          throw error;
+        }
+      }
+    }
 
     // Create migration core
     const migrationCore = new MigrationCore({
@@ -201,43 +234,45 @@ async function runCommand(args: CLIArgs): Promise<void> {
       case 'run':
         await migrationCore.runMigrations();
         break;
-        
+
       case 'status':
         const status = await migrationCore.getMigrationStatus();
         console.log('\n📊 Migration Status:');
         console.log(`   Total migrations: ${status.allMigrations.length}`);
         console.log(`   Executed: ${status.executedMigrations.length}`);
         console.log(`   Pending: ${status.pendingMigrations.length}\n`);
-        
+
         if (status.executedMigrations.length > 0) {
           console.log('✅ Executed migrations:');
-          status.executedMigrations.forEach(migration => {
+          status.executedMigrations.forEach((migration) => {
             console.log(`   • ${migration}`);
           });
           console.log('');
         }
-        
+
         if (status.pendingMigrations.length > 0) {
           console.log('⏳ Pending migrations:');
-          status.pendingMigrations.forEach(migration => {
+          status.pendingMigrations.forEach((migration) => {
             console.log(`   • ${migration}`);
           });
           console.log('');
         }
         break;
-        
+
       case 'rollback':
         if (!args.migrationName) {
-          logger.error('Migration name required for rollback. Use --migration <name>');
+          logger.error(
+            'Migration name required for rollback. Use --migration <name>',
+          );
           process.exit(1);
         }
         await migrationCore.rollbackMigration(args.migrationName);
         break;
-        
+
       case 'seeds':
         await migrationCore.runSeeds();
         break;
-        
+
       default:
         logger.error(`Unknown command: ${args.command}`);
         showHelp();
@@ -245,9 +280,17 @@ async function runCommand(args: CLIArgs): Promise<void> {
     }
 
     logger.log('Operation completed successfully');
-    
   } catch (error) {
-    logger.error('Operation failed:', error);
+    logger.error('Operation failed:');
+    if (error instanceof Error) {
+      logger.error(`Error name: ${error.name}`);
+      logger.error(`Error message: ${error.message}`);
+      if (error.stack) {
+        logger.error(`Error stack: ${error.stack}`);
+      }
+    } else {
+      logger.error('Unknown error:', error);
+    }
     process.exit(1);
   } finally {
     // Close connection
@@ -281,6 +324,6 @@ process.on('uncaughtException', (error) => {
 });
 
 // Only run main if this file is executed directly
-if (import.meta.url === `file://${process.argv[1]}`) {
+if (require.main === module) {
   main();
 }

@@ -8,15 +8,17 @@
     "emitDecoratorMetadata": true,
     "experimentalDecorators": true,
     "importHelpers": true,
-    "target": "es2015",
-    "module": "esnext",
+    "target": "es2020",
+    "module": "commonjs",
     "lib": ["es2020", "dom"],
     "skipLibCheck": true,
     "skipDefaultLibCheck": true,
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
     "baseUrl": ".",
     "paths": {
-      "shared": ["shared/src/index.ts"],
-      "@shared/entities": ["shared/src/entities/index.ts"]
+      "@shared/entities": ["shared/src/entities/index.ts"],
+      "shared": ["shared/src/index.ts"]
     }
   },
   "exclude": ["node_modules", "tmp"]
