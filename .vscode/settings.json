@@ -3,5 +3,6 @@
       { "pattern": "./frontend/*/" }, 
       { "pattern": "./backend/*/" },
       { "pattern": "./shared/*/" }
-    ]
+    ],
+    "nxConsole.generateAiAgentRules": true
   }
