@@ -29,7 +29,7 @@ test.describe('Home Accounting App - Kubernetes Deployment', () => {
 
     // Debug response details
     console.log('Response status:', response.status());
-    console.log('Response headers:', await response.allHeaders());
+    console.log('Response headers:', response.headers());
 
     // Get response text for debugging
     const responseText = await response.text();
@@ -47,7 +47,7 @@ test.describe('Home Accounting App - Kubernetes Deployment', () => {
     expect(response.status()).toBe(200);
 
     // Check if response is JSON
-    const contentType = (await response.allHeaders())['content-type'] || '';
+    const contentType = response.headers()['content-type'] || '';
     if (!contentType.includes('application/json')) {
       console.error('Response is not JSON, content-type:', contentType);
       console.error('Response body:', responseText);
