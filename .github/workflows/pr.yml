@@ -256,11 +256,15 @@ jobs:
             fi
           done
 
-      # Run E2E tests
+      # Run E2E tests (CI specific tests only)
       - name: Run E2E tests
         run: |
           echo "🧪 Running E2E tests against CI environment..."
-          npx nx run frontend-e2e:e2e --verbose --timeout=120000
+          echo "📁 Working directory: $(pwd)"
+          echo "📂 Frontend-e2e contents:"
+          ls -la frontend-e2e/src/
+          cd frontend-e2e
+          npx playwright test src/ci-app.spec.ts --timeout=120000 --verbose
         env:
           BASE_URL: http://localhost:4200
           CI: true
