@@ -16,12 +16,10 @@ export class SqlMigrationService implements OnApplicationBootstrap {
     private readonly dataSource: DataSource,
   ) {
     const migrationsPath = join(process.cwd(), 'database', 'migrations');
-    const seedsPath = join(process.cwd(), 'database', 'seeds');
     
     this.migrationCore = new MigrationCore({
       dataSource: this.dataSource,
       migrationsPath,
-      seedsPath,
       logger: {
         log: (message: string) => this.logger.log(message),
         error: (message: string, error?: any) => this.logger.error(message, error),
