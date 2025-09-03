@@ -5,7 +5,6 @@ import { join } from 'path';
 export interface MigrationConfig {
   dataSource: DataSource;
   migrationsPath: string;
-  seedsPath: string;
   logger?: {
     log: (message: string) => void;
     error: (message: string, error?: Error | unknown) => void;
@@ -27,16 +26,18 @@ export interface MigrationStatus {
 
 export class MigrationCore {
   private config: MigrationConfig;
-  
+
   constructor(config: MigrationConfig) {
     this.config = config;
-    
+
     // Default logger if none provided
     if (!this.config.logger) {
       this.config.logger = {
         log: (message: string) => console.log(`[MIGRATION] ${message}`),
-        error: (message: string, error?: Error | unknown) => console.error(`[MIGRATION ERROR] ${message}`, error),
-        warn: (message: string, error?: Error | unknown) => console.warn(`[MIGRATION WARN] ${message}`, error),
+        error: (message: string, error?: Error | unknown) =>
+          console.error(`[MIGRATION ERROR] ${message}`, error),
+        warn: (message: string, error?: Error | unknown) =>
+          console.warn(`[MIGRATION WARN] ${message}`, error),
       };
     }
   }
@@ -49,26 +50,26 @@ export class MigrationCore {
     let current = '';
     let inDollarQuoted = false;
     let dollarTag = '';
-    
+
     const lines = sql.split('\n');
-    
+
     for (const line of lines) {
       const trimmedLine = line.trim();
-      
+
       // Skip empty lines and comments when not inside dollar-quoted string
       if (!inDollarQuoted && (!trimmedLine || trimmedLine.startsWith('--'))) {
         continue;
       }
-      
+
       current += line + '\n';
-      
+
       // Check for dollar-quoted string start/end
       const dollarQuoteRegex = /\$([^$]*)\$/g;
       let match;
-      
+
       while ((match = dollarQuoteRegex.exec(line)) !== null) {
         const tag = match[1] || '';
-        
+
         if (!inDollarQuoted) {
           // Start of dollar-quoted string
           inDollarQuoted = true;
@@ -79,20 +80,20 @@ export class MigrationCore {
           dollarTag = '';
         }
       }
-      
+
       // If not in dollar-quoted string and line ends with semicolon, it's a complete statement
       if (!inDollarQuoted && trimmedLine.endsWith(';')) {
         statements.push(current.trim());
         current = '';
       }
     }
-    
+
     // Add any remaining content
     if (current.trim()) {
       statements.push(current.trim());
     }
-    
-    return statements.filter(stmt => stmt.length > 0);
+
+    return statements.filter((stmt) => stmt.length > 0);
   }
 
   /**
@@ -113,7 +114,9 @@ export class MigrationCore {
    */
   async getExecutedMigrations(): Promise<string[]> {
     await this.ensureMigrationsTable();
-    const result = await this.config.dataSource.query('SELECT name FROM migrations ORDER BY id');
+    const result = await this.config.dataSource.query(
+      'SELECT name FROM migrations ORDER BY id',
+    );
     return result.map((row: MigrationRecord) => row.name);
   }
 
@@ -124,7 +127,7 @@ export class MigrationCore {
     try {
       const files = await readdir(this.config.migrationsPath);
       return files
-        .filter(file => file.endsWith('.sql'))
+        .filter((file) => file.endsWith('.sql') && !file.endsWith('.seeds.sql'))
         .sort();
     } catch {
       this.config.logger?.warn('Migrations directory not found or empty');
@@ -139,7 +142,7 @@ export class MigrationCore {
     const allMigrations = await this.getAllMigrationFiles();
     const executedMigrations = await this.getExecutedMigrations();
     const pendingMigrations = allMigrations.filter(
-      file => !executedMigrations.includes(file)
+      (file) => !executedMigrations.includes(file),
     );
 
     return {
@@ -155,10 +158,10 @@ export class MigrationCore {
   async executeMigration(fileName: string): Promise<void> {
     try {
       this.config.logger?.log(`Executing migration: ${fileName}`);
-      
+
       const filePath = join(this.config.migrationsPath, fileName);
       const sql = await readFile(filePath, 'utf8');
-      
+
       // Execute the migration in a transaction
       await this.config.dataSource.transaction(async (manager) => {
         // Smart SQL splitting that handles PostgreSQL functions
@@ -171,12 +174,11 @@ export class MigrationCore {
         }
 
         // Mark migration as executed
-        await manager.query(
-          'INSERT INTO migrations (name) VALUES ($1)',
-          [fileName]
-        );
+        await manager.query('INSERT INTO migrations (name) VALUES ($1)', [
+          fileName,
+        ]);
       });
-      
+
       this.config.logger?.log(`✅ Migration completed: ${fileName}`);
     } catch (error) {
       this.config.logger?.error(`❌ Migration failed: ${fileName}`, error);
@@ -190,9 +192,9 @@ export class MigrationCore {
   async runMigrations(): Promise<void> {
     try {
       this.config.logger?.log('Starting SQL migrations...');
-      
+
       const status = await this.getMigrationStatus();
-      
+
       if (status.allMigrations.length === 0) {
         this.config.logger?.log('No migration files found');
         return;
@@ -203,7 +205,9 @@ export class MigrationCore {
         return;
       }
 
-      this.config.logger?.log(`Found ${status.pendingMigrations.length} pending migrations`);
+      this.config.logger?.log(
+        `Found ${status.pendingMigrations.length} pending migrations`,
+      );
 
       // Execute pending migrations
       for (const migrationFile of status.pendingMigrations) {
@@ -223,10 +227,10 @@ export class MigrationCore {
   async executeSeed(fileName: string): Promise<void> {
     try {
       this.config.logger?.log(`Executing seed: ${fileName}`);
-      
-      const filePath = join(this.config.seedsPath, fileName);
+
+      const filePath = join(this.config.migrationsPath, fileName);
       const sql = await readFile(filePath, 'utf8');
-      
+
       // Smart SQL splitting that handles PostgreSQL functions
       const statements = this.smartSplitSQL(sql);
 
@@ -235,10 +239,13 @@ export class MigrationCore {
           await this.config.dataSource.query(statement);
         }
       }
-      
+
       this.config.logger?.log(`✅ Seed completed: ${fileName}`);
     } catch (error) {
-      this.config.logger?.warn(`⚠️ Seed failed (continuing): ${fileName}`, error instanceof Error ? error.message : String(error));
+      this.config.logger?.warn(
+        `⚠️ Seed failed (continuing): ${fileName}`,
+        error instanceof Error ? error.message : String(error),
+      );
       // Continue with other seeds even if one fails
     }
   }
@@ -249,18 +256,18 @@ export class MigrationCore {
   async runSeeds(): Promise<void> {
     try {
       this.config.logger?.log('Starting seed execution...');
-      
-      // Get all seed files
+
+      // Get all seed files from migrations directory
       let files: string[];
       try {
-        files = await readdir(this.config.seedsPath);
+        files = await readdir(this.config.migrationsPath);
       } catch {
-        this.config.logger?.log('Seeds directory not found or empty');
+        this.config.logger?.log('Migrations directory not found or empty');
         return;
       }
-      
+
       const seedFiles = files
-        .filter(file => file.endsWith('.sql'))
+        .filter((file) => file.endsWith('.seeds.sql'))
         .sort();
 
       if (seedFiles.length === 0) {
@@ -288,16 +295,16 @@ export class MigrationCore {
   async rollbackMigration(fileName: string): Promise<void> {
     try {
       this.config.logger?.log(`Rolling back migration: ${fileName}`);
-      
+
       const filePath = join(this.config.migrationsPath, fileName);
       const sql = await readFile(filePath, 'utf8');
-      
+
       // Look for DOWN section in SQL file
       const downMatch = sql.match(/--\s*DOWN\s*\n([\s\S]*?)(?=--\s*UP|\s*$)/i);
       if (!downMatch) {
         throw new Error(`No DOWN section found in migration: ${fileName}`);
       }
-      
+
       const downSql = downMatch[1].trim();
       if (!downSql) {
         throw new Error(`Empty DOWN section in migration: ${fileName}`);
@@ -314,12 +321,11 @@ export class MigrationCore {
         }
 
         // Remove migration record
-        await manager.query(
-          'DELETE FROM migrations WHERE name = $1',
-          [fileName]
-        );
+        await manager.query('DELETE FROM migrations WHERE name = $1', [
+          fileName,
+        ]);
       });
-      
+
       this.config.logger?.log(`✅ Migration rolled back: ${fileName}`);
     } catch (error) {
       this.config.logger?.error(`❌ Rollback failed: ${fileName}`, error);

@@ -22,8 +22,8 @@ interface CLIArgs {
   password?: string;
   database?: string;
   migrationsPath?: string;
-  seedsPath?: string;
   migrationName?: string; // for rollback
+  applySeedsAfterMigrations?: boolean; // New option to apply seeds after migrations
   verbose?: boolean;
 }
 
@@ -75,10 +75,8 @@ function parseArguments(): CLIArgs {
         parsed.migrationsPath = nextArg;
         i++;
         break;
-      case '--seeds-path':
-      case '-s':
-        parsed.seedsPath = nextArg;
-        i++;
+      case '--apply-seeds':
+        parsed.applySeedsAfterMigrations = true;
         break;
       case '--migration':
         parsed.migrationName = nextArg;
@@ -104,7 +102,7 @@ Commands:
   run                    Run all pending migrations
   status                 Show migration status
   rollback               Rollback a specific migration
-  seeds                  Run all seed files
+  seeds                  Run all seed files (*.seeds.sql files matching migrations)
   help                   Show this help message
 
 Options:
@@ -113,8 +111,8 @@ Options:
   --username, -u         Database username (default: postgres)
   --password, -w         Database password (default: password)
   --database, -d         Database name (default: homeaccounting)
-  --migrations-path, -m  Path to migrations directory
-  --seeds-path, -s       Path to seeds directory
+  --migrations-path, -m  Path to migrations directory (default: database/migrations)
+  --apply-seeds          Apply seed files after running migrations (only with 'run' command)
   --migration            Migration name (for rollback command)
   --verbose, -v          Enable verbose logging
 
@@ -127,6 +125,7 @@ Environment Variables:
 
 Examples:
   npm run migrate run
+  npm run migrate run --apply-seeds
   npm run migrate status
   npm run migrate rollback --migration 001_create_accounts_table.sql
   npm run migrate seeds
@@ -182,7 +181,6 @@ async function runCommand(args: CLIArgs): Promise<void> {
   // Determine paths
   const migrationsPath =
     args.migrationsPath || join(process.cwd(), 'database', 'migrations');
-  const seedsPath = args.seedsPath || join(process.cwd(), 'database', 'seeds');
 
   // Verify paths exist
   if (!fs.existsSync(migrationsPath)) {
@@ -225,7 +223,6 @@ async function runCommand(args: CLIArgs): Promise<void> {
     const migrationCore = new MigrationCore({
       dataSource,
       migrationsPath,
-      seedsPath,
       logger,
     });
 
@@ -233,6 +230,10 @@ async function runCommand(args: CLIArgs): Promise<void> {
     switch (args.command) {
       case 'run':
         await migrationCore.runMigrations();
+        if (args.applySeedsAfterMigrations) {
+          logger.log('📱 Applying seeds after migrations...');
+          await migrationCore.runSeeds();
+        }
         break;
 
       case 'status':

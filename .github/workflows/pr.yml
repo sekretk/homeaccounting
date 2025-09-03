@@ -175,11 +175,11 @@ jobs:
           DATABASE_PASSWORD: "testpass123"
           NODE_ENV: test
 
-      # Seed test database using proper migration script
+      # Seed test database using proper migration script  
       - name: Seed test database
         run: |
           echo "🌱 Running database seeds..."
-          npx ts-node --project tsconfig.base.json --transpile-only scripts/migrate.ts seeds --verbose || exit 1
+          npx ts-node --project tsconfig.base.json --transpile-only scripts/migrate.ts seeds || exit 1
           echo "✅ Test data seeded successfully"
         env:
           DB_HOST: localhost

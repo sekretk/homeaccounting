@@ -1,0 +1,43 @@
+# 🔧 Git Workflow Rules
+
+## Git Command Restrictions
+
+### ❌ Never Propose Git Commits
+- **NEVER** use `git commit` commands in terminal suggestions
+- **NEVER** propose `git add . && git commit -m "message" && git push` commands
+- **NEVER** create commit messages in responses
+- **NEVER** automatically commit changes
+
+### ✅ Allowed Git Operations
+- Use `git status` to check repository state
+- Use `git add .` to stage files (when explicitly requested)
+- Use `git push` only if user explicitly requests it
+- Use `git diff` to show changes
+
+### 🎯 Rationale
+- User maintains full control over commit workflow
+- Prevents accidental commits with poor messages
+- Allows user to review changes before committing
+- Respects user's git practices and branching strategy
+
+### 📋 Best Practices
+- After making code changes, inform user that changes are ready
+- Suggest user can review changes with `git status` or `git diff`
+- Let user decide when and how to commit changes
+- Focus on the technical implementation, not the git workflow
+
+### ✅ Acceptable Responses After Changes
+**Good:**
+- "Changes completed successfully! You can review with `git status` and commit when ready."
+- "Files have been updated. Check the changes and commit at your convenience."
+- "Implementation finished. Review the modifications and add to version control as needed."
+
+**Bad:**
+- "Let's commit these changes: `git add . && git commit -m 'message'`"
+- Running commit commands automatically
+- Proposing specific commit messages
+
+## File Management
+- Always prefer editing existing files over creating new ones
+- Only create new files when absolutely necessary for the task
+- Clean up any temporary files created during development
