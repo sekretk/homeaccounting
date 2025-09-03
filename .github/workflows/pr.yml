@@ -261,7 +261,7 @@ jobs:
         run: |
           echo "🧪 Running E2E tests..."
           cd frontend-e2e
-          npx playwright test --timeout=120000 --verbose
+          npx playwright test --timeout=120000
         env:
           BASE_URL: http://localhost:4200
           CI: true
