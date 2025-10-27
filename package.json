@@ -117,11 +117,11 @@
     "migrate:rollback": "npm run migrate rollback"
   },
   "dependencies": {
-    "@nestjs/common": "^11.0.0",
+    "@nestjs/common": "^11.1.8",
     "@nestjs/config": "^4.0.2",
-    "@nestjs/core": "^11.0.0",
+    "@nestjs/core": "^11.1.8",
     "@nestjs/mapped-types": "^2.1.0",
-    "@nestjs/platform-express": "^11.0.0",
+    "@nestjs/platform-express": "^11.1.8",
     "@nestjs/terminus": "^11.0.0",
     "@nestjs/typeorm": "^11.0.0",
     "axios": "^1.6.0",
