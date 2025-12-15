@@ -48,7 +48,7 @@ jobs:
         run: npx nx graph --file=dist/project-graph.html
 
       - name: Upload artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: build-and-test-results
           path: |
